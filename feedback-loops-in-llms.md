@@ -171,7 +171,7 @@ graph TD
 
 Anthropic's context engineering research identifies that "an agent running in a loop generates more and more data that could be relevant for the next turn of inference, and this information must be cyclically refined."
 
-**Critical tension:** As context grows, **context rot** degrades performance — the model's ability to accurately recall information decreases with more tokens. This creates a natural **balancing loop** against unbounded context accumulation. Mitigation strategies (compaction, structured note-taking, progressive disclosure) are all *engineered balancing mechanisms*.
+**Critical tension:** As context grows, **context rot** degrades performance — the model's ability to accurately recall and follow information decreases with more tokens. In systems-dynamics terms, context rot is a balancing loop — it counteracts unbounded context growth — but it balances by degrading the agent's capacity, not by keeping it productive. Left unmanaged, the agent accumulates context until performance collapses. Compaction, structured note-taking, and progressive disclosure are *engineered* balancing mechanisms that intervene before context rot sets in, maintaining the agent's effective capacity rather than letting degradation do the "balancing."
 
 ---
 

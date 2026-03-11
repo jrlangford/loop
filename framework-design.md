@@ -276,6 +276,8 @@ Preconditions are derived mechanically from the stages' declared sources and sin
 
 Not all preconditions are binary pass/fail. Some are **degraded-mode checks**: the Slack notification sink is unavailable, but the pipeline can still run — it just won't notify. The designer should classify each precondition as **required** (workflow cannot start without it) or **optional** (workflow runs in degraded mode, with a warning about what won't work).
 
+**Design rule:** When a stage is delegated to a subagent (e.g., parallel reviewer agents, orchestrator-worker decomposition), the orchestrator must propagate the stage's relevant preconditions to the subagent's prompt. A precondition validated in the main agent's environment does not guarantee the subagent has the same capability — subagents may run in isolated contexts with different tool access, network permissions, or MCP server connections. The orchestrator should explicitly instruct each subagent to use the required tools/resources, and where feasible, include a lightweight re-validation step (e.g., "perform a test web search before beginning verification") in the subagent's instructions.
+
 Multiple workflows can compose the same stages differently:
 
 | Workflow | Stages | Loops | Use case |

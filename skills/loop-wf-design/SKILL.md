@@ -77,6 +77,7 @@ If the user wants preconditions:
 - List all source and sink dependencies from `stages.md`
 - For each, ask: required (abort if missing) or optional (warn and continue in degraded mode)?
 - Note any credentials, API tokens, or configuration that must be validated
+- If any stages will be delegated to subagents (parallel workers, decompose-aggregate patterns), note which preconditions must be propagated to subagent prompts — subagents run in isolated contexts and may not inherit the main agent's tool access, network permissions, or MCP server connections
 - Write preconditions to `loop-workspace/workflows/<name>/preconditions.md`
 
 If the pipeline has no external dependencies, skip this step.

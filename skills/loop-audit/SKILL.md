@@ -138,6 +138,7 @@ These go beyond anti-patterns to assess implementation quality:
 **Precondition checks:**
 - Does the pipeline validate that external sources and sinks are reachable before starting? (E.g., API tokens valid, MCP servers connected, git branch writable, Slack channel exists.)
 - If the pipeline has external dependencies but no precondition checks, flag as WARNING — mid-pipeline failures due to misconfigured integrations waste all prior work.
+- If stages are delegated to subagents (parallel workers, decompose-aggregate), do the subagent prompts include the relevant preconditions? Subagents run in isolated contexts and may lack tool access, network permissions, or MCP server connections that the orchestrator validated. Flag as WARNING if subagents depend on external resources but receive no re-validation instructions in their prompts.
 
 **Stage/workflow separation:**
 - Are stages isolated transformations, or do they contain wiring logic (sequencing, gate checks, loop control)?

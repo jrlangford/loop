@@ -113,6 +113,7 @@ Beyond anti-patterns, check design quality:
 - Do workflows with source or sink dependencies define preconditions that validate those dependencies before execution?
 - Are preconditions classified as required vs. optional (degraded mode)?
 - If no preconditions are defined but the pipeline has external dependencies, flag as INFO — the pipeline may fail mid-execution due to misconfigured integrations.
+- If any stages are delegated to subagents (parallel workers, decompose-aggregate patterns), do the subagent prompts propagate relevant preconditions? Subagents run in isolated contexts and may lack tool access, network permissions, or MCP server connections that the main agent validated. Flag as WARNING if subagents depend on external resources but their prompts don't include re-validation instructions.
 
 **Loop safety:**
 - Does every loop have both semantic termination AND a hard cap?

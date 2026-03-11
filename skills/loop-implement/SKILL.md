@@ -184,6 +184,8 @@ For each workflow in `loop-workspace/workflows/`, use `/skill-creator` to genera
 
 **Parallel stages**: If `stages.md` shows independent stages sharing the same input (no dependency between them), the orchestrator should note they can run in parallel.
 
+**Subagent precondition propagation**: When parallel stages or decompose-aggregate patterns delegate work to subagents (via the Agent tool), the orchestrator must propagate each subagent's relevant preconditions into its prompt. Preconditions validated in the main agent do not carry over — subagents may run in isolated contexts without the same tool access, network permissions, or MCP server connections. For each subagent, the orchestrator should: (1) explicitly instruct the subagent to use the required tools/resources (e.g., "use web search to verify claims"), and (2) include a lightweight re-validation step in the subagent prompt (e.g., "perform a test web search before beginning work — if it fails, report the failure and stop"). This prevents silent failures where subagents silently skip external lookups they cannot perform.
+
 **Resumption table**: Build from the artifact list — one row per stage, mapping its output artifact to a "skip this phase" decision.
 
 ### Step 7: Validate generated output
@@ -211,6 +213,7 @@ After generating all files, perform both `/skill-creator`'s validation checklist
 - [ ] No loops route back through Emit stages with iteration caps >3
 - [ ] Notification sinks are configured as fire-and-forget (non-blocking on failure)
 - [ ] Orchestrator precondition checks cover all declared sources and sinks
+- [ ] Stages delegated to subagents propagate relevant preconditions (tool access, network, MCP servers) into the subagent prompt, including a re-validation step
 
 **Self-containment** (at the pipeline level):
 - [ ] No file references `loop-workspace/` design artifacts or framework docs
