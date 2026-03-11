@@ -153,15 +153,13 @@ For each workflow in `loop-workspace/workflows/`, use `/skill-creator` to genera
 3. **Precondition checks**: If stages have source or sink dependencies, generate a precondition section that runs before the first stage. For each external dependency, check reachability/configuration (API tokens valid, MCP servers connected, git branches writable, notification channels configured). Classify each as required (abort if missing) or optional (warn and continue in degraded mode). If the pipeline has no external dependencies, omit this section.
 4. **Pipeline overview**: a visual diagram showing stage flow, gates, and loops (derived from `stages.md` + `gates.md` + `loops.md`)
 5. **Phase-by-phase instructions**: for each stage:
-   - Read the stage file: "Read `<prefix>/stages/<stage-name>.md`"
-   - Read the relevant contract files for input and output schemas
-   - Execute the stage's transformation instructions
-   - Write the output artifact to `<prefix>-workspace/`
-   - Run gate checks (inline in the orchestrator)
-   - Handle loop feedback (inline in the orchestrator)
+   - **Delegate the stage to a subagent** via the Agent tool. The subagent's prompt must include: (a) the stage file contents ("Read `<prefix>/stages/<stage-name>.md`"), (b) the relevant contract files for input and output schemas, (c) the input artifact path in `<prefix>-workspace/`, (d) the output artifact path to write. The orchestrator does **not** execute stage transformations in its own context — this would accumulate every stage's working memory, violating context isolation.
+   - After the subagent completes, the orchestrator reads the output artifact from `<prefix>-workspace/` (not the subagent's reasoning trace) to verify it exists and proceed.
+   - Run gate checks after each stage. Schema and metric gates can run inline. **Semantic gates must run in a dedicated subagent** with clean context containing only the artifact, validation criteria, and (where relevant) the original source material. The orchestrator must not evaluate semantic quality inline — its context contains orchestration history that biases evaluation.
+   - Handle loop feedback: on gate failure, re-run the stage subagent with the gate feedback appended to its prompt.
 6. **Error handling**: stage failure, human escalation, pipeline abort. For Emit stages, include sink failure handling (retry policy, idempotency checks, partial write recovery).
 7. **Resumption table**: maps output artifacts to phases — if an artifact already exists in `<prefix>-workspace/`, the corresponding phase can be skipped, enabling re-entry after failures. For Emit stages, note whether the external write was completed (to avoid duplicate writes on resume).
-8. **Guidance**: orchestrator-specific rules (read stage files one at a time to keep context focused, gates are checkpoints not bottlenecks, track degradation, preserve workspace, report progress)
+8. **Guidance**: orchestrator-specific rules (delegate each stage to a subagent for context isolation, run semantic gates in dedicated subagents, gates are checkpoints not bottlenecks, track degradation, preserve workspace, report progress)
 
 #### Orchestrator Mapping Rules
 
@@ -215,6 +213,12 @@ After generating all files, perform both `/skill-creator`'s validation checklist
 - [ ] Orchestrator precondition checks cover all declared sources and sinks
 - [ ] Stages delegated to subagents propagate relevant preconditions (tool access, network, MCP servers) into the subagent prompt, including a re-validation step
 
+**Context isolation**:
+- [ ] Every stage is delegated to a subagent — the orchestrator does not execute stage transformations in its own context
+- [ ] Semantic gates run in dedicated subagents, not inline in the orchestrator or in the producing stage's subagent
+- [ ] The orchestrator's own context contains only orchestration state (stage completion, gate results, loop counters), not stage working memory
+- [ ] Each subagent prompt includes only the stage file, relevant contracts, and input artifact path — no prior stages' context
+
 **Self-containment** (at the pipeline level):
 - [ ] No file references `loop-workspace/` design artifacts or framework docs
 - [ ] Each stage file's guidance is actionable without external context
@@ -250,7 +254,7 @@ The `<prefix>/` directory is the key architectural element. It contains all stag
 
 Stage files in `<prefix>/stages/` are instruction documents that orchestrators read at the appropriate time. They are not independently invocable skills (no SKILL.md, no frontmatter, no slash command). This is intentional:
 
-- **Context isolation**: The orchestrator reads one stage file at a time, keeping context focused on the current transformation. This is closer to the "fresh context per stage" ideal than loading all stage skills at once.
+- **Context isolation**: Each stage runs in a subagent with fresh context — the subagent sees only the stage file, its contracts, and the input artifact. The orchestrator never loads stage files into its own context, which would accumulate working memory across stages and defeat the purpose of staging.
 - **Sequencing control**: The orchestrator controls when each stage runs, what gate checks follow, and what feedback loops apply. Stages don't need to know about this.
 - **Simplicity**: Users run one command (`/<prefix>-run`) instead of invoking N stage skills in sequence.
 
@@ -259,12 +263,11 @@ If a user needs to rerun a single stage, the orchestrator's resumption table han
 ### Orchestrator Skills Are the Entry Points
 
 Each orchestrator skill is the only user-facing skill for its workflow. It:
-1. Reads stage files from `<prefix>/stages/` one at a time
-2. Reads contract files from `<prefix>/contracts/` for input/output schemas
-3. Executes the stage's transformation instructions
-4. Writes output artifacts to `<prefix>-workspace/`
-5. Runs gate checks between stages
-6. Manages feedback loops (re-reading stage files when loops trigger)
+1. Delegates each stage to a subagent (via the Agent tool), providing the stage file, relevant contracts, and input artifact path
+2. Reads output artifacts from `<prefix>-workspace/` after each subagent completes
+3. Runs gate checks between stages (schema/metric inline; semantic gates in dedicated subagents)
+4. Manages feedback loops (re-running stage subagents with gate feedback when loops trigger)
+5. Tracks orchestration state: stage completion, gate results, loop counters, degradation signals
 
 ### Naming Conventions
 

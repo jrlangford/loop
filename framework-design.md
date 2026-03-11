@@ -45,13 +45,15 @@ From recent research applying Unix philosophy to agentic AI: instead of monolith
 
 ### 2.3 The Channel Capacity Budget
 
-Each stage gets a **fresh context window** (or a deliberately curated subset of the accumulated context). This is the key mechanism for managing information flow through the channel:
+Each stage gets a **fresh context window** — not a "deliberately curated subset" of accumulated context, but an actually clean context that contains only the stage instructions, relevant contracts, and the input artifact. This is the key mechanism for managing information flow through the channel:
 
 - **Information rate** is bounded by stage scope — each stage handles only its designated transformations, keeping the task's information rate within single-inference channel capacity
 - **Noise** is minimised by passing only the relevant artifact, not the full history — reducing bandwidth wasted on irrelevant tokens
 - **Signal bandwidth** is maximised by providing stage-specific scaffolding (instructions, examples, schemas) tailored to that stage's transformation — high-signal encoding aids
 
 A single-pass approach forces the full task information rate through one channel. Staging decomposes it into manageable transmissions.
+
+**Implementation requirement:** In Claude Code, fresh context per stage means **delegating each stage to a subagent** via the Agent tool. An orchestrator that executes stages in its own context accumulates every stage's working memory — file reads, intermediate reasoning, correction attempts — creating exactly the context pollution that staging is designed to prevent. By the final stage, the orchestrator's context window contains the full history of every prior stage, not just their output artifacts. The orchestrator should execute stages via subagents and retain only the orchestration-level information: which stages completed, gate results, and loop state. The subagent produces the output artifact in the workspace; the orchestrator reads the artifact (not the subagent's reasoning trace) to proceed.
 
 ### 2.4 Feedback Loops Are First-Class
 
@@ -160,9 +162,9 @@ In pipelines with many stages, cumulative drift across successive handoffs can s
 The producing stage cannot reliably audit its own output for drift — it operates within the drifted context that produced the artifact. Artifact validation should therefore happen in one of two ways:
 
 - **Mechanical validation** (schema checks, field type checks, identity field comparison) — deterministic, operates outside any LLM context, and is immune to drift.
-- **Semantic validation in a clean context** — when an LLM must evaluate artifact quality, the evaluation should happen in a separate, minimal context that contains only the artifact, the validation criteria, and (where relevant) the original source material. The evaluator should not share context with the producing stage.
+- **Semantic validation in a clean context** — when an LLM must evaluate artifact quality, the evaluation should happen in a separate, minimal context that contains only the artifact, the validation criteria, and (where relevant) the original source material. The evaluator should not share context with the producing stage. In Claude Code, this means semantic gates must run in a **dedicated subagent**, not inline in the orchestrator or (worse) in the same subagent that produced the artifact.
 
-This is the gate design principle: **validate at the gate, not at the stage.** The producing stage's job is to produce; the gate's job is to validate. Combining both in the same inference allows the producing stage's trajectory to bias the validation.
+This is the gate design principle: **validate at the gate, not at the stage.** The producing stage's job is to produce; the gate's job is to validate. Combining both in the same inference allows the producing stage's trajectory to bias the validation. An orchestrator that runs a stage and then "evaluates with fresh eyes" in the same context is not performing semantic validation — it is performing self-review, which is unreliable because the reasoning trajectory that produced the artifact is still in context.
 
 ### 3.4 Gates (Workflow Level)
 
@@ -859,7 +861,7 @@ Stage-level skills produce artifacts that are workflow-independent. Workflow-lev
 <prefix>-run/SKILL.md               — orchestrator skill (one per workflow)
 ```
 
-Stages are reference documents, not independently invocable skills. The orchestrator reads one stage file at a time, loading the relevant contracts for input/output schemas. This keeps context focused on the current transformation — closer to the "fresh context per stage" principle than loading all stage instructions simultaneously.
+Stages are reference documents, not independently invocable skills. Each stage file is loaded into a **subagent's** context alongside its input/output contracts — never into the orchestrator's own context. This delivers the "fresh context per stage" principle: the subagent sees only the stage instructions, the relevant contracts, and the input artifact. The orchestrator retains only orchestration state (gate results, loop counters, completion status), not the stage's working memory.
 
 Contracts live in a shared directory because the same artifact schema may be referenced by a producing stage and multiple consuming stages. Defining each contract once eliminates duplication and provides a single source of truth. The shared resource directory is workflow-independent — multiple orchestrator skills can reference the same stages and contracts with different gate/loop configurations.
 

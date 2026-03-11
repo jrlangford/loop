@@ -115,6 +115,11 @@ Beyond anti-patterns, check design quality:
 - If no preconditions are defined but the pipeline has external dependencies, flag as INFO — the pipeline may fail mid-execution due to misconfigured integrations.
 - If any stages are delegated to subagents (parallel workers, decompose-aggregate patterns), do the subagent prompts propagate relevant preconditions? Subagents run in isolated contexts and may lack tool access, network permissions, or MCP server connections that the main agent validated. Flag as WARNING if subagents depend on external resources but their prompts don't include re-validation instructions.
 
+**Context isolation:**
+- Does the design specify that stages run in subagents (fresh context), or does it assume the orchestrator executes stages in its own context? An orchestrator that runs stages inline accumulates every stage's working memory, defeating the purpose of staging. Flag as WARNING if the design doesn't explicitly require subagent delegation for stages.
+- Do semantic gates run in dedicated subagents with clean context? A semantic gate evaluated in the same context as the producing stage is unreliable — the production trajectory biases the evaluation. Flag as WARNING if semantic gates are specified as inline evaluations.
+- For balancing loops: when a stage is re-run with feedback, does the re-run happen in a fresh subagent? Re-running in the same context preserves the failed attempt's reasoning, which can anchor the retry to the same errors.
+
 **Loop safety:**
 - Does every loop have both semantic termination AND a hard cap?
 - Does every loop have a degradation detector?

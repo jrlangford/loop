@@ -140,6 +140,11 @@ These go beyond anti-patterns to assess implementation quality:
 - If the pipeline has external dependencies but no precondition checks, flag as WARNING — mid-pipeline failures due to misconfigured integrations waste all prior work.
 - If stages are delegated to subagents (parallel workers, decompose-aggregate), do the subagent prompts include the relevant preconditions? Subagents run in isolated contexts and may lack tool access, network permissions, or MCP server connections that the orchestrator validated. Flag as WARNING if subagents depend on external resources but receive no re-validation instructions in their prompts.
 
+**Context isolation:**
+- Does the orchestrator delegate stages to subagents (Agent tool), or does it execute stage transformations in its own context? An orchestrator that runs stages inline accumulates every stage's working memory — file reads, intermediate reasoning, correction attempts — creating the context pollution that staging is designed to prevent. Flag as WARNING if stages run in the orchestrator's context.
+- Do semantic gates run in dedicated subagents with clean context (artifact + criteria only)? A semantic gate evaluated in the same context as the producing stage inherits the production trajectory, making it unreliable. Flag as WARNING if semantic gates run inline.
+- When loops re-run a stage after gate failure, does the re-run use a fresh subagent? Re-running in the same context preserves the failed attempt's reasoning, anchoring the retry to the same errors. Flag as WARNING if retries share context with the failed attempt.
+
 **Stage/workflow separation:**
 - Are stages isolated transformations, or do they contain wiring logic (sequencing, gate checks, loop control)?
 - Could the same stage be reused in a different workflow without modification?
