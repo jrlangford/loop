@@ -79,6 +79,14 @@ Check for each anti-pattern:
 - Are closed vocabularies (enums, scores) used where the domain allows, or do artifacts carry open-ended descriptions?
 - **Severity**: warning if free-text fields dominate without source references; error if 5+ stages with no identity fields and no re-grounding
 
+**6.8 Fire-and-Forget Emit**
+- Are there Emit stages (stages with sink dependencies) that write to external targets?
+- Do those stages have a gate *before* the write that validates the artifact thoroughly? A gate *after* a write can't undo it.
+- Do Emit stages have idempotency markers (stable IDs, transaction references) to prevent duplicate writes on retry?
+- If a gate failure or loop re-entry routes back through an Emit stage, can the write be safely repeated?
+- Are notification sinks (Slack, email, webhooks) treated as fire-and-forget, or do they incorrectly block the pipeline on failure?
+- **Severity**: error if emit stage has no upstream gate or no idempotency strategy; warning if loop routes back through emit stage without tight cap (≤3 iterations)
+
 ### Step 3: Run structural checks
 
 Beyond anti-patterns, check design quality:
@@ -94,10 +102,22 @@ Beyond anti-patterns, check design quality:
 - Are there gates with no max retries / escalation?
 - For extraction or synthesis stages: do gates check *completeness* (did the stage capture everything it should have?), or only *correctness* (is what it produced valid?)? A schema gate that passes a list of 3 entities when there should be 10 is missing the omission. Flag extraction/synthesis boundaries without a coverage metric or source reconciliation check.
 
+**Sink safety:**
+- Do all stages with sink dependencies have gates *before* the write?
+- Do Emit stages declare idempotency strategies for their sinks?
+- Are notification sinks classified as fire-and-forget (non-blocking)?
+- If a loop routes back through an Emit stage, is the iteration cap ≤3 and idempotency explicitly addressed?
+- Are all sinks declared in `stages.md`? (Hidden sinks are a traceability risk — you can't test or audit what you don't know about.)
+
+**Precondition coverage (for production workflows):**
+- Do workflows with source or sink dependencies define preconditions that validate those dependencies before execution?
+- Are preconditions classified as required vs. optional (degraded mode)?
+- If no preconditions are defined but the pipeline has external dependencies, flag as INFO — the pipeline may fail mid-execution due to misconfigured integrations.
+
 **Loop safety:**
 - Does every loop have both semantic termination AND a hard cap?
 - Does every loop have a degradation detector?
-- Are any iteration caps unreasonably high (>10 for balancing, >5 for reinforcing)?
+- Are any iteration caps unreasonably high (>10 for balancing, >5 for reinforcing, >3 for loops involving Emit stages)?
 - For balancing loops (critique-refine): are the evaluator and refiner separate inference calls with separate contexts? If the same context handles both evaluation and refinement, the producing stage's trajectory biases the evaluation — this creates a reinforcing dynamic inside what should be a balancing loop.
 - Does every loop with a degradation detector also specify a best-iteration selection strategy? When degradation is detected, the loop should use the best iteration's output, not the last one. If the spec says "always use last," flag it as a warning — the loop may end in a worse state than an earlier iteration.
 
@@ -129,6 +149,7 @@ For each workflow, calculate inference call counts:
 - **Gates**: +1 for each semantic gate, +N for each consensus gate (N = evaluator count). Schema, metric, identity, and human gates cost zero inference calls (human gates cost time, not inference).
 - **Loops (best case)**: +0 if termination can trigger on first pass
 - **Loops (worst case)**: for each loop, multiply the stages in the loop by the max iteration count
+- **Sink costs**: external API calls, notification sends, and other write operations per input — including duplicated writes from loop re-entry if Emit stages are inside loops
 
 Report as a range: `best case – worst case calls per input`. Flag workflows where the worst case is more than 3× the best case — this suggests the loop bounds may be too loose or the pipeline would benefit from tighter gates to reduce loop frequency.
 

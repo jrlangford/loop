@@ -62,6 +62,7 @@ Review the full set of context specs for issues:
 - **Late-pipeline stages receiving early-pipeline details?** This is usually a History Avalanche.
 - **Stages with very large scaffolding?** If the instructions are longer than the input, the stage may be too complex — revisit decomposition.
 - **Semantic gates sharing context with their producing stage?** Gates that use LLM evaluation should run in a separate, minimal context containing only the artifact and validation criteria. If the gate evaluator sees the producing stage's full context, the producer's trajectory biases the validation.
+- **Emit stages with bloated context?** Stages that write to external sinks should have clean, minimal context focused on what the sink needs. If the stage is formatting data for an external API, it should see only the artifact being written and the sink's format requirements — not upstream history or unrelated scaffolding. Extra context wastes bandwidth and may cause formatting errors in the external write.
 - **Long pipelines (5+ stages) with no re-grounding?** Consider whether a checkpoint stage should compare the current artifact against the original pipeline input to detect cumulative drift.
 
 ### Step 5: Write the artifact

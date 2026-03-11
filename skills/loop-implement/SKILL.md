@@ -74,7 +74,7 @@ Ask the user where to write skills. Default: `skills/` in the current project di
 Load all `loop-workspace/` artifacts. Build a cross-reference:
 
 For each stage, collect:
-- **From `stages.md`**: name, category, intent, input, output, sources, complexity
+- **From `stages.md`**: name, category, intent, input, output, sources, sinks, complexity
 - **From `artifacts.md`**: the artifact spec for this stage's output (structure, omitted fields, validation rules, reasoning trace policy)
 - **From `context-specs.md`** (if present): what goes in context, what's excluded, load assessment, history policy
 
@@ -114,8 +114,9 @@ For each stage in `stages.md`, create a file in `<prefix>/stages/`:
 3. **Input**: Which contract(s) to read from `<prefix>-workspace/`, with path(s). Reference contract files by name: "Read `<prefix>/contracts/<name>.md` for the input schema."
 4. **Output**: Which contract to produce, with workspace path. Reference contract file: "Read `<prefix>/contracts/<name>.md` for the output schema."
 5. **Steps**: Stage-specific transformation steps derived from intent, category, and complexity notes
-6. **Sources**: External resources this stage accesses (if any — web, APIs, filesystem). Stages without sources work entirely from input artifacts.
-7. **Guidance**: Do/don't rules derived from stage category, context specs, and complexity notes
+6. **Sources**: External resources this stage reads from (if any — web, APIs, filesystem). Stages without sources work entirely from input artifacts.
+7. **Sinks**: External targets this stage writes to (if any — APIs, git, notification channels, databases). For each sink, include: target description, format/API requirements, idempotency strategy (how to prevent duplicate writes on retry).
+8. **Guidance**: Do/don't rules derived from stage category, context specs, and complexity notes
 
 #### Stage Category → Posture
 
@@ -127,6 +128,7 @@ For each stage in `stages.md`, create a file in `<prefix>/stages/`:
 | **Evaluate** | Assess against criteria. Separate observation from judgment. Evidence required. |
 | **Synthesise** | Combine inputs into a new whole. Reference sources, don't paraphrase. |
 | **Refine** | Improve based on specific feedback. Change only what the feedback addresses. |
+| **Emit** | Push to external target. Validate completeness before writing. Ensure idempotency markers are present. |
 
 #### Context Spec → Stage Guidance
 
@@ -148,17 +150,18 @@ For each workflow in `loop-workspace/workflows/`, use `/skill-creator` to genera
 
 1. **Skill name**: `<prefix>-run` (single workflow) or `<prefix>-run-<workflow>` (multiple)
 2. **Purpose**: orchestrate the full pipeline — sequence stages, enforce gates, manage feedback loops
-3. **Pipeline overview**: a visual diagram showing stage flow, gates, and loops (derived from `stages.md` + `gates.md` + `loops.md`)
-4. **Phase-by-phase instructions**: for each stage:
+3. **Precondition checks**: If stages have source or sink dependencies, generate a precondition section that runs before the first stage. For each external dependency, check reachability/configuration (API tokens valid, MCP servers connected, git branches writable, notification channels configured). Classify each as required (abort if missing) or optional (warn and continue in degraded mode). If the pipeline has no external dependencies, omit this section.
+4. **Pipeline overview**: a visual diagram showing stage flow, gates, and loops (derived from `stages.md` + `gates.md` + `loops.md`)
+5. **Phase-by-phase instructions**: for each stage:
    - Read the stage file: "Read `<prefix>/stages/<stage-name>.md`"
    - Read the relevant contract files for input and output schemas
    - Execute the stage's transformation instructions
    - Write the output artifact to `<prefix>-workspace/`
    - Run gate checks (inline in the orchestrator)
    - Handle loop feedback (inline in the orchestrator)
-5. **Error handling**: stage failure, human escalation, pipeline abort
-6. **Resumption table**: maps output artifacts to phases — if an artifact already exists in `<prefix>-workspace/`, the corresponding phase can be skipped, enabling re-entry after failures
-7. **Guidance**: orchestrator-specific rules (read stage files one at a time to keep context focused, gates are checkpoints not bottlenecks, track degradation, preserve workspace, report progress)
+6. **Error handling**: stage failure, human escalation, pipeline abort. For Emit stages, include sink failure handling (retry policy, idempotency checks, partial write recovery).
+7. **Resumption table**: maps output artifacts to phases — if an artifact already exists in `<prefix>-workspace/`, the corresponding phase can be skipped, enabling re-entry after failures. For Emit stages, note whether the external write was completed (to avoid duplicate writes on resume).
+8. **Guidance**: orchestrator-specific rules (read stage files one at a time to keep context focused, gates are checkpoints not bottlenecks, track degradation, preserve workspace, report progress)
 
 #### Orchestrator Mapping Rules
 
@@ -201,6 +204,13 @@ After generating all files, perform both `/skill-creator`'s validation checklist
 - [ ] Every orchestrator references stage files that exist in `<prefix>/stages/`
 - [ ] Workspace file paths are consistent across all stage files and orchestrators
 - [ ] Orchestrator gate criteria match contract validation rules
+
+**Sink safety:**
+- [ ] Every Emit stage file includes idempotency strategy and sink format requirements
+- [ ] Every gate before an Emit stage validates the artifact is complete and write-ready
+- [ ] No loops route back through Emit stages with iteration caps >3
+- [ ] Notification sinks are configured as fire-and-forget (non-blocking on failure)
+- [ ] Orchestrator precondition checks cover all declared sources and sinks
 
 **Self-containment** (at the pipeline level):
 - [ ] No file references `loop-workspace/` design artifacts or framework docs
@@ -269,6 +279,7 @@ LLM stages are stochastic — a pipeline has a *success rate*, not a pass/fail r
 - **Loop iteration counts** — how many iterations each loop actually uses. If loops consistently hit their hard cap, the termination condition may be too tight or the task needs restructuring
 - **Artifact snapshots** — what each stage produced, enabling post-hoc diagnosis of pipeline failures
 - **Gate decisions** — what criteria passed/failed and what feedback was routed, so failure patterns can be analyzed
+- **Sink writes** — for Emit stages: what was written, to which target, whether it succeeded, idempotency ID used (if any). Log these alongside gate decisions so external write failures can be correlated with pipeline execution
 
 Include a "Pipeline Run Summary" section at the end of each orchestrator run that reports these metrics.
 

@@ -22,6 +22,7 @@ The following definitions guide what to look for when reverse-engineering an imp
 | **Evaluate** | Assess quality against criteria | Draft → scored draft with issues |
 | **Synthesise** | Combine multiple artifacts into one | Multiple analyses → unified report |
 | **Refine** | Improve an artifact based on feedback | Draft + critique → improved draft |
+| **Emit** | Push an artifact to an external target | Report → published report (via API, git, Slack) |
 
 **Artifacts** are typed, structured intermediate representations passed between stages. They should be self-describing, validatable, serialisable, and minimal. Key design properties:
 - *Enumerate, don't describe* — prefer closed vocabularies (enums, scores) over free text to reduce interpretation drift
@@ -36,7 +37,11 @@ The following definitions guide what to look for when reverse-engineering an imp
 - *Balancing (B)* — correct, constrain, converge. Risk: phantom feedback (loop that never triggers correction). Requires convergence criteria + degradation detector.
 - Every loop must have: declared type (R or B), semantic termination condition, hard iteration cap, degradation detector.
 
-**Sources** (stage-level) are external resources a stage accesses to bring new information into the pipeline: web, API, MCP server, database, filesystem. Sources are distinct from input artifacts — an input artifact flows through the pipeline from an upstream stage; a source enters from outside. Stages without sources are pure transformations; stages with sources are enriched transformations. The distinction affects testing, failure handling, and cost.
+**Sources** (stage-level) are external resources a stage reads from to bring new information into the pipeline: web, API, MCP server, database, filesystem. Sources are distinct from input artifacts — an input artifact flows through the pipeline from an upstream stage; a source enters from outside.
+
+**Sinks** (stage-level) are external targets a stage writes to, pushing data out of the pipeline: APIs, databases, git, notification services (Slack, email, webhooks), filesystem. Sinks are distinct from output artifacts — an output artifact flows to a downstream stage; a sink receives data from the pipeline into an external system. Stages with sinks are **emitting transformations** and carry special concerns: idempotency (preventing duplicate writes on retry), gate failure recovery (writes can't be undone), and testability (need sink mocks). **Notifications** are a sink subtype that is fire-and-forget by default — failure doesn't block the pipeline.
+
+**Stage classification**: Stages without sources or sinks are *pure transformations*; with sources only, *enriched*; with sinks only, *emitting*; with both, *enriched emitting*. The classification affects testing, retry safety, and failure handling.
 
 **Workflows** compose stages into specific pipelines — which stages, in what order, with which gates and loops. Same stages can participate in multiple workflows with different wiring. Workflows are lightweight orchestration, not transformation logic.
 
@@ -53,7 +58,7 @@ Design artifacts in `loop-workspace/`, identical in format to what the design sk
 
 **Stage-level** (root of `loop-workspace/`):
 - `transformation.md` — overall transformation definition
-- `stages.md` — stage decomposition (with source dependencies)
+- `stages.md` — stage decomposition (with source and sink dependencies)
 - `artifacts.md` — artifact specifications
 - `context-specs.md` — per-stage context budgets
 
@@ -82,6 +87,7 @@ Read implementation files to understand the pipeline structure. Look for:
 - **Validation** — any checks, gates, or quality assurance between stages
 - **Feedback paths** — retries, revision loops, re-runs
 - **Context management** — what each stage reads, what it ignores
+- **External writes** — what data each stage pushes to external systems (APIs, git, Slack, databases). These are sinks.
 
 Adapt discovery to the implementation type:
 - **Claude Code skills (shared resource structure)**: Look for a `<prefix>/` directory containing `stages/` (stage reference documents) and `contracts/` (artifact schemas). Orchestrator skills (`<prefix>-run/SKILL.md`) sequence stages and manage gates/loops. Stage boundaries are the files in `stages/`. Artifacts are defined by the files in `contracts/`. This is the structure `/loop-implement` produces.
@@ -104,8 +110,10 @@ Create `loop-workspace/` and write artifacts in this order:
 **`stages.md`** — One stage per meaningful unit of work:
 - Map each implementation unit (skill, agent node, script phase) to a stage
 - Apply the one-verb heuristic: flag stages whose implementation does multiple things
-- Note the stage category (Extract, Enrich, Transform, Evaluate, Synthesise, Refine)
-- Identify source dependencies: does this stage fetch from the web, call APIs, use MCP servers, query databases, or read external files? Mark stages with no external access as pure transformations.
+- Note the stage category (Extract, Enrich, Transform, Evaluate, Synthesise, Refine, Emit)
+- Identify source dependencies: does this stage fetch from the web, call APIs, use MCP servers, query databases, or read external files?
+- Identify sink dependencies: does this stage write to external systems — push to APIs, commit to git, send Slack messages, insert into databases, write output files? Note the sink type and whether the implementation handles idempotency (stable IDs, deduplication).
+- Classify each stage: pure (no sources/sinks), enriched (sources only), emitting (sinks only), or enriched emitting (both).
 - If an implementation unit contains sub-phases, note them but model the unit as one stage unless the sub-phases are independently invocable
 
 **`artifacts.md`** — One artifact per stage boundary:

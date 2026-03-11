@@ -36,7 +36,7 @@ Use subagents for parallel discovery when the implementation has many files.
 
 Build a working understanding of the implementation at both levels:
 
-**Stage level**: What transformation units exist, what artifacts pass between them, what each stage loads into context, what external sources each stage accesses. Stages should be isolated transformations — they produce an artifact and stop, without knowing what comes next. Stages may be implemented as independent skills, as reference documents in a shared resource directory (read by an orchestrator), or as functions/modules in code.
+**Stage level**: What transformation units exist, what artifacts pass between them, what each stage loads into context, what external sources each stage reads from, and what external sinks each stage writes to. Stages should be isolated transformations — they produce an artifact and stop, without knowing what comes next. Stages may be implemented as independent skills, as reference documents in a shared resource directory (read by an orchestrator), or as functions/modules in code.
 
 **Workflow level**: How stages are sequenced, where validation gates are placed, what feedback loops exist, what iteration bounds and termination conditions are configured. This is the wiring — it should be lightweight orchestration, not transformation logic.
 
@@ -91,7 +91,15 @@ Check the *implementation directly*. Implementation-level checks catch things de
 - Do data structures mix observed facts with evaluative conclusions in single fields?
 - **Severity**: warning if free-text fields dominate without source references; error if 5+ stages with no identity verification and no re-grounding
 
-**Coverage requirement**: The audit report must address all 7 anti-patterns by name, even if no issue is found. For clean anti-patterns, include an INFO-level note confirming the check passed (e.g., "INFO: Ouroboros — no circular dependencies found"). This ensures every audit is verifiably complete — a missing anti-pattern means the check wasn't performed, not that the implementation is clean.
+**6.8 Fire-and-Forget Emit**
+- Are there stages that write to external systems (APIs, databases, git, Slack)?
+- Do those stages have idempotency markers (stable IDs, transaction references)?
+- Are gates placed *before* external writes, not after?
+- If loops or retry paths route back through an Emit stage, can writes be safely repeated without duplication?
+- Are notification sinks handled as fire-and-forget (logged but non-blocking)?
+- **Severity**: error if emit stage has no idempotency strategy; warning if loop re-entry through emit stage without tight cap
+
+**Coverage requirement**: The audit report must address all 8 anti-patterns by name, even if no issue is found. For clean anti-patterns, include an INFO-level note confirming the check passed (e.g., "INFO: Ouroboros — no circular dependencies found"). This ensures every audit is verifiably complete — a missing anti-pattern means the check wasn't performed, not that the implementation is clean.
 
 ### Step 4: Run structural checks
 
@@ -113,10 +121,23 @@ These go beyond anti-patterns to assess implementation quality:
 - Note whether the implementation manages context deliberately or just loads everything
 
 **Source dependencies:**
-- Does the implementation access external resources (web, APIs, MCP servers, databases)?
+- Does the implementation read from external resources (web, APIs, MCP servers, databases)?
 - Are these sources declared in the stage definitions, or are they implicit/hidden?
 - What happens when a source is unavailable — does the stage fail gracefully or crash?
 - Are there stages assumed to be pure transformations that actually have undeclared external dependencies?
+
+**Sink dependencies:**
+- Does the implementation write to external systems (APIs, databases, git, Slack, notification services)?
+- Are these sinks declared in the stage definitions, or are they hidden?
+- Do Emit stages have idempotency markers (stable IDs, checksums, transaction references) to prevent duplicate writes on retry?
+- Are gates placed *before* external writes to validate artifacts before they leave the pipeline?
+- What happens if a sink write fails — does the stage retry safely, or risk partial/duplicate writes?
+- Are notification sinks (Slack, email, webhooks) handled as fire-and-forget (non-blocking), or do failures incorrectly halt the pipeline?
+- If loops or retry paths pass through Emit stages, are iteration caps tight (≤3) and idempotency explicitly addressed?
+
+**Precondition checks:**
+- Does the pipeline validate that external sources and sinks are reachable before starting? (E.g., API tokens valid, MCP servers connected, git branch writable, Slack channel exists.)
+- If the pipeline has external dependencies but no precondition checks, flag as WARNING — mid-pipeline failures due to misconfigured integrations waste all prior work.
 
 **Stage/workflow separation:**
 - Are stages isolated transformations, or do they contain wiring logic (sequencing, gate checks, loop control)?
@@ -137,7 +158,7 @@ These go beyond anti-patterns to assess implementation quality:
 - Do loops track quality or progress across iterations? Without tracking, there's no way to detect degradation — the loop may make things worse without anyone noticing.
 - When degradation is detected, does the loop select the best iteration's output or always use the last? Using the last iteration's output means more iterations create more opportunities to end in a worse state.
 - For balancing loops: are the evaluating and refining stages separate inference calls with separate contexts? Combining evaluation and refinement in the same context allows the producer's trajectory to bias the evaluation.
-- Are iteration bounds reasonable? Flag caps above 10 for balancing loops or above 5 for reinforcing loops — high caps with stochastic stages increase the chance of ending in a degraded state.
+- Are iteration bounds reasonable? Flag caps above 10 for balancing loops, above 5 for reinforcing loops, or above 3 for loops involving Emit stages — high caps with stochastic stages increase the chance of ending in a degraded state, and with Emit stages also risk duplicate external writes.
 
 **Stochastic validation:**
 - LLM stages are stochastic — the same input can produce different outputs across runs. Does the implementation track run-to-run variance? Look for: gate pass/fail logging, loop iteration count tracking, output quality metrics across runs. If the pipeline has no mechanism to characterize its reliability distribution (gate pass rates, loop iteration distributions, output quality variance), flag as WARNING — single-run validation cannot capture whether the pipeline is reliable or just got lucky.

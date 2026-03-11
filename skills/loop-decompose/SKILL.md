@@ -21,8 +21,9 @@ A file named `loop-workspace/stages.md` containing an ordered list of stages, ea
 3. **Transformation intent** — what this stage does, as a single verb phrase
 4. **Input** — what this stage consumes (from upstream stage or pipeline input)
 5. **Output** — what this stage produces (for downstream stage or pipeline output)
-6. **Source dependencies** — external resources this stage accesses, if any (see below)
-7. **Complexity notes** — anything from the transformation definition that suggests this stage may need special handling
+6. **Source dependencies** — external resources this stage reads from, if any (see below)
+7. **Sink dependencies** — external targets this stage writes to, if any (see below)
+8. **Complexity notes** — anything from the transformation definition that suggests this stage may need special handling
 
 **Stage categories:**
 
@@ -34,8 +35,22 @@ A file named `loop-workspace/stages.md` containing an ordered list of stages, ea
 | **Evaluate** | Assess quality against criteria | Draft → scored draft with issues |
 | **Synthesise** | Combine multiple artifacts into one | Multiple analyses → unified report |
 | **Refine** | Improve an artifact based on feedback | Draft + critique → improved draft |
+| **Emit** | Push an artifact to an external target | Report → published report (via API, git, Slack) |
 
-**Source dependencies** are external resources a stage accesses to bring new information into the pipeline (web, API, MCP server, database, filesystem). Sources are distinct from input artifacts: an input artifact flows through the pipeline from an upstream stage; a source enters from outside. Stages with no source dependencies are **pure transformations** (testable with fixture artifacts alone). Stages with sources are **enriched transformations** (need mocks or live access for testing, have different failure modes, and carry cost/latency implications).
+**Source dependencies** are external resources a stage reads from to bring new information into the pipeline (web, API, MCP server, database, filesystem). Sources are distinct from input artifacts: an input artifact flows through the pipeline from an upstream stage; a source enters from outside.
+
+**Sink dependencies** are external targets a stage writes to, pushing data out of the pipeline (APIs, MCP servers, git, notification channels, databases, filesystem). Sinks are distinct from output artifacts: an output artifact flows to a downstream stage; a sink receives data from the pipeline into an external system. Key sink concerns: writes are not freely retryable (risk of duplication), gate failures after a write can't undo it (idempotency matters), and sink stages need mocks for testing.
+
+**Notifications** are a special sink subtype for signaling pipeline state (Slack messages, emails, webhooks). Notification failures are **fire-and-forget by default** — they should be logged but should not block the pipeline. If delivery confirmation is required (e.g., a human must acknowledge), that's a human gate with a notification mechanism, not a notification sink.
+
+**Stage classification by external dependencies:**
+
+| Sources | Sinks | Classification | Characteristics |
+|---------|-------|----------------|-----------------|
+| None | None | **Pure transformation** | Freely retryable, testable with fixtures alone |
+| Yes | None | **Enriched transformation** | Needs source mocks for testing, retry-safe |
+| None | Yes | **Emitting transformation** | Needs sink mocks, retry requires idempotency |
+| Yes | Yes | **Enriched emitting transformation** | Both source and sink mocks needed, most complex failure modes |
 
 ## How to Run
 
@@ -60,6 +75,7 @@ Using the gap analysis, propose stages. Apply these heuristics:
 - **Narrow before wide**: stages that filter, select, or reduce should precede stages that elaborate or enrich — process less data first, reduce noise for downstream stages.
 - **Fail-fast**: stages most likely to reject input or trigger a gate failure should run early — discovering a problem after 5 stages wastes all prior work.
 - **Cheap before expensive**: when otherwise unconstrained, run cheaper stages first — if a cheap stage's gate fails, you avoid paying for the expensive one.
+- **Emit last**: stages that write to external sinks (APIs, git, Slack) should come after all validation — you can't undo a write. Gate the artifact thoroughly before emitting.
 
 ### Step 3: Challenge the decomposition with the user
 
@@ -90,11 +106,12 @@ Write `loop-workspace/stages.md`:
 ## Stages
 
 ### Stage 1: [Verb-Noun Name]
-- **Category**: [Extract | Enrich | Transform | Evaluate | Synthesise | Refine]
+- **Category**: [Extract | Enrich | Transform | Evaluate | Synthesise | Refine | Emit]
 - **Intent**: [Single verb phrase]
 - **Input**: [What this stage consumes]
 - **Output**: [What this stage produces]
-- **Sources**: [None (pure transformation) | List of external dependencies with type]
+- **Sources**: [None | List of external read dependencies with type]
+- **Sinks**: [None | List of external write targets with type and idempotency notes]
 - **Complexity**: [Notes from transformation definition, or "None identified"]
 
 ### Stage 2: [Verb-Noun Name]

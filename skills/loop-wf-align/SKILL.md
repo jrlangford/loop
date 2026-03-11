@@ -40,6 +40,7 @@ Present discrepancies grouped by resolution direction:
 **Update design** (drift, undesigned behavior that's intentional):
 - The implementation has evolved. The design artifacts need to catch up.
 - Suggest which `/loop-*` design skill to re-run for each.
+- If drift involves new external sinks (writes added since design was written), prioritize — undocumented sinks are a traceability and safety risk. The design's stage specs need updating to document the new sink and its idempotency strategy.
 
 **Update implementation** (gaps, undesigned behavior that's accidental):
 - The design specifies something the implementation doesn't do, or the implementation does something unintended.

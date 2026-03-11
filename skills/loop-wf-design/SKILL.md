@@ -69,7 +69,19 @@ Run `/loop-review`. It reviews stage-level artifacts and the active workflow.
 
 After the first workflow is complete, ask the user if they want to define another workflow over the same stages. If yes, return to Step 3 with a new workflow name. The stage-level artifacts are already done — only the workflow-level phases need to run again.
 
-### Step 7: Completion
+### Step 7: Preconditions (optional)
+
+If any stages have source or sink dependencies (external reads or writes), ask the user whether to define preconditions for this workflow. Preconditions validate that external dependencies are reachable and properly configured before the first stage runs — preventing mid-pipeline failures due to expired tokens, misconfigured integrations, or unavailable services.
+
+If the user wants preconditions:
+- List all source and sink dependencies from `stages.md`
+- For each, ask: required (abort if missing) or optional (warn and continue in degraded mode)?
+- Note any credentials, API tokens, or configuration that must be validated
+- Write preconditions to `loop-workspace/workflows/<name>/preconditions.md`
+
+If the pipeline has no external dependencies, skip this step.
+
+### Step 8: Completion
 
 When all workflows are designed (review passes or user accepts remaining issues):
 - Present a summary: stage count, artifact count, workflow count, gates and loops per workflow

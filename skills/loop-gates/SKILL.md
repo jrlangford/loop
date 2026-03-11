@@ -27,6 +27,7 @@ Every artifact boundary is a candidate. But not every boundary needs a gate. Pri
 - **After stages where errors are costly** — if a bad artifact here corrupts everything downstream
 - **After stages with high uncertainty** — extraction from unstructured input, LLM-based evaluation
 - **Before stages that are expensive** — don't waste a costly synthesis on garbage input
+- **Before Emit stages (external writes)** — gates before stages that write to external sinks are critical. A gate failure *after* a write can't undo the write. Validate the artifact thoroughly before it leaves the pipeline. Check completeness, format compatibility with the sink's API, and presence of idempotency markers.
 - **At natural quality checkpoints** — where the artifact has clear pass/fail criteria
 
 ### Step 2: Walk through the gate worksheet for each position
@@ -47,6 +48,11 @@ For each gate, ask:
 - **Coverage metrics** — instruct the producing stage to include a coverage indicator (e.g., "extracted 7 entities from 12 paragraphs"), then add a metric gate checking that the ratio meets a minimum threshold.
 - **Source-artifact reconciliation** — add a semantic gate that receives both the artifact *and* the original source material, so it can check what was missed. More expensive (the gate's context must include the source), but catches omissions that coverage metrics cannot.
 - **Minimum cardinality checks** — for extraction stages where expected output size is roughly predictable, add a metric gate with a floor ("at least N entities" or "at least N% of input sections represented"). Catches gross omission cheaply.
+
+**Gating Emit stages (external writes)**: Gates before Emit stages serve a dual purpose — they validate artifact quality *and* prevent bad data from reaching external systems where it can't be retracted. For Emit stage gates, additionally check:
+- **Idempotency readiness** — does the artifact have a stable ID or transaction reference that prevents duplicate writes if the emit is retried?
+- **Sink format compliance** — does the artifact structure match the external target's API contract or schema requirements?
+- **Completeness** — is the artifact complete enough for the external target? Partial writes to external systems are often worse than no write at all.
 
 ### Step 3: Assign gate types
 

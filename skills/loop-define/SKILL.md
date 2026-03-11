@@ -44,7 +44,7 @@ Ask the user these questions. Challenge vague or incomplete answers — cite the
 **Output Specification:**
 - What should the pipeline produce? (format, structure)
 - What are the quality criteria? (How would you judge a good output vs. a bad one?)
-- Who or what consumes the output? (human reader, downstream system, another LLM)
+- Who or what consumes the output? (human reader, downstream system, another LLM, external service via API/git/notification)
 
 **Transformation Gap:**
 - What's hard about getting from input to output?
@@ -73,7 +73,8 @@ Ask the user these questions. Challenge vague or incomplete answers — cite the
 - Where is correctness critical vs. best-effort acceptable?
 
 **Complexity Signals** (assess, don't ask all of these — use judgment):
-- Does the task require external information not in the input?
+- Does the task require external information not in the input? (Sources — web, APIs, databases)
+- Does the pipeline need to write results to external systems? (Sinks — APIs, git, Notion, Slack, databases) If so: what systems? Are there notification needs (e.g., alerting a human when a gate needs review)?
 - Does quality depend on iterative refinement?
 - Are there independent sub-tasks that could run in parallel?
 - Is there a risk of the LLM reinforcing its own errors?
@@ -101,7 +102,8 @@ Write `loop-workspace/transformation.md` using this structure:
 ## Complexity Signals
 <!-- Which signals are present. These inform downstream skills. -->
 <!-- Mark each: parallelisation opportunity, refinement need, -->
-<!-- external knowledge dependency, error reinforcement risk -->
+<!-- external knowledge dependency (sources), external write targets (sinks), -->
+<!-- notification needs, error reinforcement risk -->
 ```
 
 ### Step 5: Summarise

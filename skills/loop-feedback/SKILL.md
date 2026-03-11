@@ -66,7 +66,16 @@ Each loop needs a mechanism to detect when further iterations are making things 
 
 **Best-iteration selection**: When a degradation detector fires, the loop should use the *best* iteration's output, not necessarily the *last* one. If the loop tracks quality scores, it can select the iteration with the highest score. If it can't detect and select the best iteration's output, keep iteration bounds tight — more iterations mean more opportunities for the loop to end in a worse state than an earlier iteration. Ask the user: does this loop keep track of the best artifact across iterations, or does it always use the last one?
 
-### Step 5: Check for loop anti-patterns
+### Step 5: Check for Emit stage loop safety
+
+If any loop involves an Emit stage (a stage with sink dependencies that writes to external systems), apply additional scrutiny:
+
+- **Tight iteration caps**: Loops through Emit stages should have caps ≤3. Each iteration may write to the external system, so more iterations mean more risk of duplicate or conflicting writes.
+- **Idempotency required**: The Emit stage must have an idempotency strategy (stable IDs, transaction references, overwrite semantics) so repeated writes don't create duplicates.
+- **Pre-emit gating**: Ensure a gate validates the artifact *before* the Emit stage, not after. A gate failure after a write can't undo it.
+- **Notification sinks are different**: If the sink is a notification (Slack, email, webhook), duplicate sends are annoying but not data-corrupting. Keep caps tight, but notification loops are lower risk than API/database writes.
+
+### Step 6: Check for loop anti-patterns
 
 Flag these if detected:
 
@@ -76,7 +85,7 @@ Flag these if detected:
 | **Phantom Feedback** | Loop that never triggers correction — gate criteria too loose, or refine step makes only cosmetic changes | Tighten criteria or remove the loop; monitor whether the corrective path actually fires |
 | **Ouroboros** | Unintentional circular dependency across 3+ stages — emergent reinforcing dynamics no individual stage was designed to produce | Make the cycle explicit with termination, or break it |
 
-### Step 6: Map to established patterns
+### Step 7: Map to established patterns
 
 For each loop, note which established pattern it implements. This grounds the design in known patterns and helps with implementation.
 
@@ -99,7 +108,7 @@ For each loop, note which established pattern it implements. This grounds the de
 - This pattern **parallelises naturally** — sub-tasks can run concurrently since they share the same input and produce independent outputs.
 - Model the decompose and aggregate steps as stages in `stages.md`. The parallel processing stages share the same input artifact. The aggregate stage takes all sub-artifacts as input.
 
-### Step 7: Write the artifact
+### Step 8: Write the artifact
 
 Write `loop-workspace/workflows/<workflow-name>/loops.md`:
 
@@ -128,7 +137,7 @@ Write `loop-workspace/workflows/<workflow-name>/loops.md`:
 <!-- not an oversight. -->
 ```
 
-### Step 8: Summarise
+### Step 9: Summarise
 
 Present the loop map. The user or a workflow skill (`/loop-wf-design`) determines what to run next.
 

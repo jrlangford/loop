@@ -30,7 +30,7 @@ Run `/loop-reverse` with `$ARGUMENTS` (the path or description of the implementa
 
 This produces design artifacts in `loop-workspace/` — the implementation described in Loop vocabulary.
 
-After completion, ask the user to review the synthesized artifacts. Flag any synthesis notes (where the mapping required interpretation).
+After completion, ask the user to review the synthesized artifacts. Flag any synthesis notes (where the mapping required interpretation). Pay particular attention to whether the reverse step captured sink dependencies — any external writes the implementation makes (API calls, git pushes, Slack messages, database inserts).
 
 ### Step 3: Review the design
 
@@ -48,7 +48,7 @@ This checks the *implementation directly* and, since design artifacts now exist 
 
 Combine findings from review and audit into a unified picture:
 - **Design-level issues** (from `/loop-review`): structural problems visible in the pipeline's architecture
-- **Implementation-level issues** (from `/loop-audit`): problems visible only by reading the actual code
+- **Implementation-level issues** (from `/loop-audit`): problems visible only by reading the actual code — including sink safety (idempotency, pre-emit gating) and missing precondition checks
 - **Discrepancies** (from `/loop-audit`): gaps between the reverse-engineered model and the implementation
 
 Suggest next steps:

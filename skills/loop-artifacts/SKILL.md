@@ -56,7 +56,14 @@ The reasoning trace decision is per-artifact. Guide the user:
 - **Omit trace when**: the downstream stage operates purely on the artifact's content without needing provenance. Traces are noise in the downstream channel if unused.
 - **Summary trace as middle ground**: a brief rationale rather than full reasoning.
 
-### Step 5: Identify identity fields
+### Step 5: Check for sink-consumed artifacts
+
+If any artifact is consumed by an Emit stage (a stage that writes to an external system), note additional requirements:
+- **Sink format compliance** — the artifact structure must match the external target's API contract or schema. Include format constraints in the artifact spec.
+- **Idempotency markers** — the artifact should include a stable identifier (transaction ID, content hash, or reference key) that the Emit stage can use to prevent duplicate writes on retry. Add this as a required field.
+- **Completeness over partial writes** — partial or incomplete artifacts sent to external systems are often worse than no write at all. Ensure the artifact spec defines a clear "complete and write-ready" validation criterion.
+
+### Step 6: Identify identity fields
 
 For each artifact, ask the user: which fields should pass through downstream stages unchanged? These are the artifact's **identity fields**. Common candidates:
 
@@ -67,7 +74,7 @@ For each artifact, ask the user: which fields should pass through downstream sta
 
 Identity fields must be mechanically checkable (exact match or hash comparison). If identity fields are present, note them in the artifact spec — gates can verify them cheaply.
 
-### Step 6: Write the artifact
+### Step 7: Write the artifact
 
 Write `loop-workspace/artifacts.md`:
 
@@ -97,7 +104,7 @@ Write `loop-workspace/artifacts.md`:
 - **Quality criteria**: [From transformation definition]
 ```
 
-### Step 7: Summarise
+### Step 8: Summarise
 
 Present a summary of the artifact chain. The user or a workflow skill (`/loop-wf-design`) determines what to run next.
 

@@ -70,13 +70,14 @@ A Loop pipeline separates **what transforms data** from **how transformations ar
 1. **Stages** — Isolated transformation units. A stage transforms an input artifact into an output artifact. It does not know what comes before or after it.
 2. **Artifacts** — Typed intermediate representations. The data contracts between stages.
 3. **Context Specs** — Per-stage channel capacity budgets. What goes into each stage's context window.
-4. **Sources** — Declared external dependencies. Where a stage accesses information from outside the pipeline (web, APIs, MCP servers, databases).
+4. **Sources** — Declared external read dependencies. Where a stage accesses information from outside the pipeline (web, APIs, MCP servers, databases).
+5. **Sinks** — Declared external write targets. Where a stage pushes data out of the pipeline (APIs, MCP servers, git, notification channels).
 
 **Workflow level** (composition, defines how stages are wired):
 
-5. **Gates** — Validation checkpoints placed between stages. Where errors are caught and where failures route.
-6. **Loops** — Explicit feedback connections between stages. Reinforcing or balancing, with termination conditions.
-7. **Workflows** — The composition itself: which stages run in what order, with which gates and loops.
+6. **Gates** — Validation checkpoints placed between stages. Where errors are caught and where failures route.
+7. **Loops** — Explicit feedback connections between stages. Reinforcing or balancing, with termination conditions.
+8. **Workflows** — The composition itself: which stages run in what order, with which gates and loops. Includes precondition checks that validate external dependencies before execution begins.
 
 A single set of stages can participate in multiple workflows. A conservative workflow might place strict gates and limit loops to 1 iteration. An exploratory workflow might use the same stages but with looser gates and 10-iteration reinforcing loops. The stages don't change — only the wiring does.
 
@@ -84,7 +85,7 @@ Above both levels sits the **problem definition**: what the pipeline transforms,
 
 ### 3.2 Stages
 
-A stage is a single LLM inference (or a small bounded set of inferences) that performs a coherent set of transformations. Each stage is an **isolated transformation** — it is self-contained (doesn't access other stages' state), composable (doesn't know its position in a workflow), and has declared interfaces (inputs, outputs, and source dependencies are explicit).
+A stage is a single LLM inference (or a small bounded set of inferences) that performs a coherent set of transformations. Each stage is an **isolated transformation** — it is self-contained (doesn't access other stages' state), composable (doesn't know its position in a workflow), and has declared interfaces (inputs, outputs, source dependencies, and sink dependencies are explicit).
 
 Each stage has:
 
@@ -94,7 +95,8 @@ Each stage has:
 | **Output artifact** | The typed artifact this stage produces |
 | **Transformation intent** | What the stage does, stated as a verb phrase |
 | **Context spec** | What goes into the context window for this stage |
-| **Source dependencies** | External resources this stage accesses (if any) — see Section 3.7 |
+| **Source dependencies** | External resources this stage reads from (if any) — see Section 3.7 |
+| **Sink dependencies** | External targets this stage writes to (if any) — see Section 3.8 |
 
 Note: a stage does not declare which loops or gates it participates in — that is defined at the workflow level (Section 3.6). A stage is a reusable unit that transforms its inputs into an output artifact.
 
@@ -108,6 +110,7 @@ Note: a stage does not declare which loops or gates it participates in — that 
 | **Evaluate** | Assess quality against criteria | Draft → scored draft with issues |
 | **Synthesise** | Combine multiple artifacts into one | Multiple analyses → unified report |
 | **Refine** | Improve an artifact based on feedback | Draft + critique → improved draft |
+| **Emit** | Push an artifact to an external target | Report → published report (via API, git, etc.) |
 
 ### 3.3 Artifacts
 
@@ -214,7 +217,9 @@ graph LR
 
 Use when: you want iterative enrichment, progressive elaboration, or cumulative refinement. Each pass through the loop should demonstrably add value.
 
-*Example:* Extract → Enrich → Extract (re-extract with enriched context) → Enrich (deeper enrichment with more structure)
+*Example:* Summarize → Elaborate → Summarize (re-summarize with added detail) → Elaborate (expand on the richer summary)
+
+> **Watch for compound dynamics.** If a stage in a reinforcing loop also filters or rejects input (e.g., an Extract stage that drops low-confidence items), it introduces a hidden balancing dynamic. Decompose these into separate R and B loops with their own termination conditions — this makes each loop's intent legible and independently tunable. Avoid modeling a single loop as compound (R+B); the mixed dynamics make termination conditions harder to reason about and degradation harder to detect.
 
 **Balancing loops (B)** — designed to correct and constrain:
 
@@ -236,7 +241,7 @@ Use when: you want quality control, error correction, or constraint enforcement.
 - A **declared type** (R or B) — making the designer's intent explicit
 - A **termination condition** — preventing unbounded iteration
 - A **maximum iteration count** — hard backstop even if the termination condition has bugs
-- A **degradation detector** — mechanism to detect when further iterations are making things worse, not better (essential for preventing reinforcing loops from running away). Because stages are stochastic, degradation detection should use a moving average or require consecutive regressions rather than triggering on a single iteration's decline (see Section 3.8)
+- A **degradation detector** — mechanism to detect when further iterations are making things worse, not better (essential for preventing reinforcing loops from running away). Because stages are stochastic, degradation detection should use a moving average or require consecutive regressions rather than triggering on a single iteration's decline (see Section 3.9)
 
 ### 3.6 Workflows
 
@@ -249,7 +254,27 @@ A workflow specifies:
 | **Stage sequence** | Which stages, in what order |
 | **Gate placement** | Which artifact boundaries have gates, and of what type |
 | **Loop configuration** | Which feedback connections exist, with type, iteration bounds, and termination conditions |
+| **Preconditions** | What must be true before the workflow starts — external dependency validation, configuration checks |
 | **Name** | A descriptive name distinguishing this workflow from others over the same stages |
+
+#### Preconditions
+
+A precondition is a **readiness check** that validates the workflow's external dependencies before execution begins. Preconditions exist because discovering a misconfigured Notion integration at stage 7 wastes all the work of stages 1–6.
+
+Preconditions are derived mechanically from the stages' declared sources and sinks:
+
+| Dependency type | Precondition check |
+|-----------------|-------------------|
+| **API source/sink** | Auth token valid, endpoint reachable, required permissions present |
+| **MCP server** | Server connected, required tools available |
+| **Git sink** | Repository accessible, branch writable, no conflicting locks |
+| **Notification sink** | Channel exists, bot/webhook configured, test message succeeds |
+| **Database source/sink** | Connection established, required tables/collections exist |
+| **Filesystem source/sink** | Paths exist (or are creatable), permissions sufficient |
+
+**Design rule:** Precondition checks run before the first stage, not during it. A precondition failure produces a clear diagnostic ("Notion API token expired", "Slack channel #reviews not found") and prevents the workflow from starting. This is cheaper and clearer than a mid-pipeline failure.
+
+Not all preconditions are binary pass/fail. Some are **degraded-mode checks**: the Slack notification sink is unavailable, but the pipeline can still run — it just won't notify. The designer should classify each precondition as **required** (workflow cannot start without it) or **optional** (workflow runs in degraded mode, with a warning about what won't work).
 
 Multiple workflows can compose the same stages differently:
 
@@ -271,7 +296,8 @@ The stages A, B, and C are defined once. Each workflow wires them differently.
 - **Base cost** = number of stages (each stage is at least one inference call)
 - **Gate cost** = number of semantic gates (each is an inference call) + number of consensus gates × evaluator count. Schema and metric gates are essentially free.
 - **Loop cost** = for each loop, multiply the stages in the loop by the expected iteration count. Use the *average* case, not the maximum — but know the maximum.
-- **Worst-case cost** = base + all gates + all loops at maximum iterations. This is the ceiling for a single pipeline run.
+- **Sink cost** = external API calls, notification sends, and other write operations. These may have per-call costs (API pricing) or rate limits that constrain throughput.
+- **Worst-case cost** = base + all gates + all loops at maximum iterations + sink writes (including duplicated writes from loop re-entry). This is the ceiling for a single pipeline run.
 
 For example, the research-to-report pipeline in Section 4.4 has 6 stages, 2 gates (1 schema, 1 metric — both cheap), and 2 balancing loops (max 2 and max 3 iterations). Best case: 6 calls. Worst case: 6 + 2 + 3×2 = 14 calls. If each call costs ~$0.05, that's $0.30–$0.70 per input. For a batch of 1000 inputs, the difference between a 2-stage and 14-stage pipeline is significant.
 
@@ -279,9 +305,9 @@ The cost estimate also reveals design tradeoffs: a consensus gate that triples g
 
 ### 3.7 Sources (Stage Level)
 
-A source is an **external resource** that a stage accesses to bring new information into the pipeline. Sources are declared as stage-level dependencies — a stage that needs web access declares it regardless of which workflow it participates in.
+A source is an **external resource** that a stage reads from to bring new information into the pipeline. Sources are declared as stage-level dependencies — a stage that needs web access declares it regardless of which workflow it participates in.
 
-Sources are distinct from input artifacts: an input artifact is data that flows through the pipeline from an upstream stage; a source is data that enters the pipeline from outside it.
+Sources are distinct from input artifacts: an input artifact is data that flows through the pipeline from an upstream stage; a source is data that enters the pipeline from outside it. Sources are also distinct from sinks (Section 3.8): a source is a read dependency; a sink is a write target.
 
 **Source types:**
 
@@ -310,9 +336,69 @@ Sources are distinct from input artifacts: an input artifact is data that flows 
 | Is the source output deterministic? | *(same query always returns the same result, or is it time-varying?)* |
 | Does this source have rate limits or cost implications? | |
 
-A stage with no source dependencies is a **pure transformation** — it operates entirely on its input artifact and scaffolding. A stage with source dependencies is an **enriched transformation** — it combines its input artifact with external data. Both are valid; the distinction affects testing, failure handling, and cost.
+A stage with no source dependencies is a **pure transformation** — it operates entirely on its input artifact and scaffolding. A stage with source dependencies is an **enriched transformation** — it combines its input artifact with external data. Both are valid; the distinction affects testing, failure handling, and cost. Stages may also have sink dependencies (Section 3.8), which add write side effects to either category.
 
-### 3.8 Non-Determinism
+### 3.8 Sinks (Stage Level)
+
+A sink is an **external target** that a stage writes to, pushing data out of the pipeline. Sinks are the counterpart to sources (Section 3.7): sources bring information *in*; sinks push information *out*. Like sources, sinks are declared as stage-level dependencies — a stage that writes to Notion declares it regardless of which workflow it participates in.
+
+Sinks are distinct from output artifacts: an output artifact is data that flows to a downstream stage within the pipeline; a sink write delivers data to an external system outside the pipeline.
+
+**Sink types:**
+
+| Type | Examples | Failure modes |
+|------|----------|---------------|
+| **API** | REST endpoints, GraphQL mutations, Notion pages | Auth expiry, rate limits, write conflicts, schema rejection |
+| **MCP Server** | Tool servers accepting write operations | Connection failures, tool errors, permission denials |
+| **Git** | Commits, branch pushes, PR creation | Merge conflicts, permission errors, hook failures |
+| **Notification** | Slack messages, email, webhooks | Delivery failures, formatting errors, channel misconfiguration |
+| **Filesystem** | Output files, reports, generated assets | Permission errors, disk space, path conflicts |
+| **Database** | Inserts, updates, record creation | Constraint violations, connection failures, stale locks |
+
+**Why sinks matter:**
+
+- **Side effects are not retryable like transformations.** A failed transformation can be re-run freely — it only produces an artifact. A failed stage that already wrote to a sink may have partially completed the write. Re-running the stage risks duplicating the side effect (double-posting to Slack, creating duplicate Notion pages, committing twice). Sink-aware design must address idempotency.
+- **Gate failures after sink writes cannot undo the write.** If a stage writes to a sink and then a downstream gate fails and routes back for correction, the sink write has already happened. The pipeline designer must decide: does the corrected re-run overwrite, append, or skip the sink write? This is a design decision that pure-transformation pipelines never face.
+- **Testability** — stages with sink dependencies need mocks or sandbox environments. You don't want tests posting to production Slack or pushing to the main branch.
+- **Observability** — sink writes are the pipeline's externally visible effects. Logging what was written, when, and whether it succeeded is essential for debugging and audit trails.
+
+**Design worksheet — for each sink dependency:**
+
+| Question | Answer |
+|----------|--------|
+| What type of sink is this? | *(API, MCP server, git, notification, filesystem, database)* |
+| What does this stage write to the sink? | *(artifact content, status notification, generated file)* |
+| Is the write idempotent? | *(Can the same write be safely repeated without duplication?)* |
+| What happens if the write fails? | *(fail the stage, retry, buffer for later, skip and warn)* |
+| What happens if a downstream gate fails after a successful write? | *(overwrite on re-run, append correction, no action needed)* |
+| Does this sink have rate limits or cost implications? | |
+
+#### 3.8.1 Notifications (A Sink Subtype)
+
+A notification is a sink write whose purpose is to **signal pipeline state** rather than deliver a pipeline artifact. The distinction matters for failure handling: a notification failure should not block the pipeline. If a Slack message fails to send, the pipeline's transformation work is still valid — the human just wasn't informed.
+
+Common notification triggers:
+- **Human gate reached** — the pipeline needs human review before proceeding
+- **Pipeline completion** — the final artifact is ready
+- **Error escalation** — an automated gate failed and needs human attention
+- **Progress milestones** — long-running pipelines reporting intermediate status
+
+**Design rule:** Notifications are **fire-and-forget by default**. A notification failure should be logged but should not trigger gate failure, loop re-entry, or stage retry. If delivery confirmation is required (e.g., a human must acknowledge before the pipeline proceeds), that is not a notification — it is a human gate with a notification mechanism, and the gate's failure handling applies.
+
+#### 3.8.2 Stage Classification by External Dependencies
+
+A stage's external dependencies determine its testing, retry, and failure-handling characteristics:
+
+| Sources | Sinks | Classification | Characteristics |
+|---------|-------|----------------|-----------------|
+| None | None | **Pure transformation** | Fully deterministic inputs, freely retryable, testable with fixtures alone |
+| Yes | None | **Enriched transformation** | Needs source mocks for testing, retry-safe (reads are idempotent) |
+| None | Yes | **Emitting transformation** | Needs sink mocks for testing, retry requires idempotency consideration |
+| Yes | Yes | **Enriched emitting transformation** | Most complex — needs both source and sink mocks, both read and write failure modes |
+
+The classification is not a quality judgment — pipelines often legitimately need all four types. But the designer should be aware of which stages have side effects, because those stages behave differently under retry, gate failure, and loop re-entry.
+
+### 3.9 Non-Determinism
 
 LLM stages are stochastic. The same input, same context, same system prompt can produce different artifacts on different runs. This is not a bug to be eliminated — temperature and sampling diversity are what prevent trajectory lock-in (see `feedback-loops-in-llms.md` Section 3.1). But it has consequences that the pipeline designer must account for.
 
@@ -507,7 +593,7 @@ graph LR
 - The evaluator and refiner should be **separate inference calls** (ideally separate system prompts). Using the same context for both creates a reinforcing dynamic — the model is biased toward approving its own work.
 - Feedback should be **structured** (specific issues with locations), not vague ("could be better").
 - Termination: either all criteria pass, or improvement between iterations falls below a threshold.
-- **Degradation signal:** If the evaluation score trends downward across iterations, the refine step is introducing errors faster than it's fixing them. Because both evaluator and refiner are stochastic, don't trigger on a single iteration's decline — use consecutive regressions or a moving average (Section 3.8).
+- **Degradation signal:** If the evaluation score trends downward across iterations, the refine step is introducing errors faster than it's fixing them. Because both evaluator and refiner are stochastic, don't trigger on a single iteration's decline — use consecutive regressions or a moving average (Section 3.9).
 
 ### 5.2 The Progressive Enrichment Loop (Reinforcing)
 
@@ -655,6 +741,12 @@ A pipeline where Stage A's output influences Stage B, which influences Stage C, 
 A long pipeline where artifacts carry free-text interpretations rather than source references, and no re-grounding checkpoint exists. Each stage reinterprets the previous stage's summary, and small interpretation shifts compound across stages until the late-pipeline artifact bears little resemblance to the original input. Unlike the History Avalanche (which is about carrying too much), this is about carrying the wrong kind of information — paraphrases instead of references, judgments mixed with observations, open-ended descriptions instead of enumerated values.
 
 **Fix:** Apply the handoff drift techniques from Section 3.3.1: enumerate don't describe, reference don't paraphrase, separate observation from judgment. Declare identity fields (Section 3.3.2) and verify them at gates. For pipelines with 5+ stages, add a re-grounding checkpoint.
+
+### 6.8 The Fire-and-Forget Emit
+
+An Emit stage (one with sink dependencies) that writes to an external system without idempotency safeguards, without a pre-write gate, or inside a loop with high iteration caps. The pipeline can't undo a write — if a downstream gate fails or a loop re-enters through the Emit stage, the write has already happened. Without idempotency markers (stable IDs, transaction references), retries create duplicates. Without a pre-write gate, bad data reaches the external system before validation catches it.
+
+**Fix:** Gate artifacts thoroughly *before* Emit stages, not after. Require idempotency markers (stable identifiers that prevent duplicate writes on retry). Keep loop iteration caps tight (≤3) for any loop that passes through an Emit stage. For notification sinks (Slack, email, webhooks), treat failures as fire-and-forget — log but don't block the pipeline.
 
 ---
 
