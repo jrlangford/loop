@@ -34,6 +34,8 @@ Changes to the framework should flow into skills where relevant. Changes to skil
 
 **Implementation skills** (translate design to code): `loop-implement` (generate shared resource directory + orchestrator skills from design artifacts)
 
+**Documentation skills** (summarize design for humans): `loop-describe` (generate readable markdown with mermaid workflow diagrams from design artifacts)
+
 **Workflow skills** (orchestrate phase skills): `loop-wf-design` (greenfield), `loop-wf-analyze` (existing code), `loop-wf-align` (drift check)
 
 ### Pipeline Two-Level Split

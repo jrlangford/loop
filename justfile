@@ -1,6 +1,6 @@
 skills_dir := env("HOME") / ".claude" / "skills"
 
-skills := "loop-wf-design loop-wf-analyze loop-wf-align loop-define loop-decompose loop-artifacts loop-gates loop-feedback loop-context loop-review loop-reverse loop-audit loop-implement"
+skills := "loop-wf-design loop-wf-analyze loop-wf-align loop-define loop-decompose loop-artifacts loop-gates loop-feedback loop-context loop-review loop-reverse loop-audit loop-implement loop-describe"
 
 # Install all skills as user-level symlinks
 install:
