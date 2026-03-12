@@ -33,6 +33,8 @@ Run `/loop-audit` with `$ARGUMENTS` (the path or description of the implementati
 
 Since design artifacts exist, the audit will include a Design–Implementation Discrepancies section classifying each discrepancy as: design drift, implementation gap, structural mismatch, or undesigned behavior.
 
+Pay special attention to **context isolation drift** — where the design specifies subagent delegation for stages but the implementation executes stages inline in the orchestrator, or where the design requires semantic gates in clean dedicated contexts but the implementation evaluates them in the producing stage's context. Context isolation drift is particularly insidious because it silently degrades pipeline quality without causing obvious failures.
+
 ### Step 3: Triage discrepancies
 
 Present discrepancies grouped by resolution direction:

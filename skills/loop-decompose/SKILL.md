@@ -69,6 +69,8 @@ Using the gap analysis, propose stages. Apply these heuristics:
 - The task type changes (extraction → evaluation → synthesis)
 - A fresh context window would help (the upstream output is sufficient input; history isn't needed)
 
+**Context isolation principle**: Each stage will execute in a fresh context window containing only the stage instructions, its input artifact, and stage-specific scaffolding. Stages do not see prior stages' reasoning, working memory, or context — only the output artifact from the preceding stage. This means each stage boundary is also an isolation boundary: the output artifact must carry everything the next stage needs, because nothing else will be available.
+
 **Information rate check**: For each proposed stage, ask: could a single, well-prompted LLM call handle this? If the answer is "only with a very long, complex prompt," the task's information rate may exceed single-channel capacity — the stage needs further decomposition.
 
 **Ordering principles** — when data dependencies don't fully determine the sequence:

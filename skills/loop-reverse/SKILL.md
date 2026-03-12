@@ -87,6 +87,7 @@ Read implementation files to understand the pipeline structure. Look for:
 - **Validation** — any checks, gates, or quality assurance between stages
 - **Feedback paths** — retries, revision loops, re-runs
 - **Context management** — what each stage reads, what it ignores
+- **Context isolation** — whether each stage runs in a fresh context (e.g., delegated to a subagent) or shares context with other stages (e.g., executed inline in the orchestrator). Also check whether semantic gates run in dedicated clean contexts or share the producing stage's context.
 - **External writes** — what data each stage pushes to external systems (APIs, git, Slack, databases). These are sinks.
 
 Adapt discovery to the implementation type:
@@ -129,6 +130,7 @@ Create `loop-workspace/` and write artifacts in this order:
 - Document what each stage actually loads into context (files read, history included)
 - Note the history policy (explicit or implied)
 - Flag stages that load more than they need
+- Document the **isolation model**: does each stage run in a fresh context (subagent delegation), or does it share context with the orchestrator or other stages? Note whether semantic gates run in dedicated clean contexts or inline with the producing stage. Flag any context accumulation across stages — this is the History Avalanche anti-pattern.
 
 Then write workflow-level artifacts under `workflows/<name>/` (use "default" if the implementation has a single workflow, or derive names from distinct execution paths):
 

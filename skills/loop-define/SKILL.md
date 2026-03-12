@@ -65,6 +65,8 @@ Ask the user these questions. Challenge vague or incomplete answers — cite the
   - Different parts of the task need different context (e.g., domain knowledge for extraction, style guides for formatting)
   - You need to validate intermediate results before proceeding
 
+  When staging is warranted, each stage will run in a **fresh, isolated context** — it sees only its input artifact, stage instructions, and stage-specific scaffolding. No accumulated history from prior stages. This means the output artifact at each boundary must carry everything the next stage needs.
+
   **Human-in-the-loop is already a pipeline.** When working interactively with an LLM tool like Claude Code, the natural workflow — model transforms, human reviews, human decides what's next — is already a staged pipeline with human gates. If every stage's output will be reviewed by a human before the next stage runs, Loop's gate and loop machinery may be unnecessary. Loop adds value when the pipeline needs some automation: automated gates, feedback loops that iterate without human steering, or composition beyond linear steps.
 
   Flag this honestly — not every task needs staging. When in doubt, start with a single call. If it works reliably, stop.

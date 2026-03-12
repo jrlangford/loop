@@ -62,6 +62,12 @@ These produce artifacts scoped to the named workflow under `loop-workspace/workf
 
 Run `/loop-review`. It reviews stage-level artifacts and the active workflow.
 
+Before presenting results, verify the design includes **context isolation guarantees**:
+- `context-specs.md` should specify that each stage runs in a fresh context (subagent delegation) — not inline in the orchestrator
+- Semantic gates should be specified as running in dedicated clean contexts (artifact + validation criteria only), not sharing the producing stage's context
+- If `context-specs.md` is silent on isolation model, flag this as a WARNING to the user and suggest re-running `/loop-context` to address it
+
+Then:
 - If no ERROR-severity issues: the design is complete. Present the full artifact inventory.
 - If ERROR-severity issues exist: present them and ask the user which to address. For each, identify which upstream skill to re-run. After fixes, re-run `/loop-review` (max 3 review cycles).
 
