@@ -1,0 +1,154 @@
+# Artifact Specifications
+
+## Pipeline Input: Source Document
+- **Content**: Markdown document containing research claims with citations
+- **Format**: Raw markdown with prose, inline citations, and reference sections
+- **Variability**: Low — stable, static documents; pipeline does not modify input
+
+## Artifact: Extract Claims → Classify Claims
+- **Name**: Claim List
+- **Content**: Every identifiable claim from the source document with its location and associated citations
+- **Structure**:
+  - `claims[]`:
+    - `claim_id`: string — stable identifier based on document position (e.g., `claim-3-2` for section 3, sentence 2)
+    - `text`: string — verbatim quote of the claim from the source
+    - `location`: string — section heading + paragraph index in the source document
+    - `citations`: string[] — list of citation references associated with this claim (may be empty)
+    - `has_citation`: boolean — whether the claim has at least one associated citation
+- **Identity fields**: `claim_id`, `text`, `location`, `citations`
+- **Omitted**: Surrounding prose, formatting, non-claim sentences, document metadata
+- **Validation**: Every claim has a non-empty `text` and valid `location` that maps back to the source document. No duplicate `claim_id` values.
+- **Reasoning trace**: None — extraction is structural, not interpretive
+
+## Artifact: Classify Claims → Verify Claims
+- **Name**: Typed Claim List
+- **Content**: Claim list with type classification added to each claim
+- **Structure**:
+  - `claims[]`:
+    - `claim_id`: string — (identity, unchanged)
+    - `text`: string — (identity, unchanged)
+    - `location`: string — (identity, unchanged)
+    - `citations`: string[] — (identity, unchanged)
+    - `has_citation`: boolean — (identity, unchanged)
+    - `claim_type`: enum — `factual | analytical | opinion`
+    - `classification_rationale`: string — brief summary of why this type was assigned
+- **Identity fields**: `claim_id`, `text`, `location`, `citations`
+- **Omitted**: Nothing additional omitted from upstream
+- **Validation**: Every claim has a valid `claim_type` enum value. All upstream identity fields preserved unchanged.
+- **Reasoning trace**: Summary — `classification_rationale` field. Downstream reviewers may adjust verification approach based on claim type, and edge cases (opinion vs. factual) benefit from stated reasoning.
+
+## Artifact: Verify Claims → Compare Assessments (x3 instances)
+- **Name**: Reviewer Assessment
+- **Content**: One reviewer's independent assessment of every claim
+- **Structure**:
+  - `reviewer_id`: string — identifier for this reviewer instance (`reviewer-1`, `reviewer-2`, `reviewer-3`)
+  - `assessments[]`:
+    - `claim_id`: string — (identity, unchanged)
+    - `text`: string — (identity, unchanged)
+    - `claim_type`: enum — (identity, unchanged from Typed Claim List)
+    - `citation_valid`: boolean | null — whether cited sources support the claim (null if no citation)
+    - `citation_notes`: string — what the citation actually says vs. what the claim states (empty if no citation)
+    - `verdict`: enum — `supported | contradicted | insufficient_evidence | unverifiable`
+    - `confidence`: enum — `high | medium | low`
+    - `evidence_found`: object[] — list of evidence items:
+      - `source_url`: string — URL of the source consulted
+      - `source_title`: string — title or description of the source
+      - `relevant_excerpt`: string — verbatim quote or close paraphrase from the source
+      - `supports_claim`: boolean — whether this evidence supports or contradicts the claim
+    - `reasoning`: string — reviewer's rationale for verdict and confidence
+- **Identity fields**: `claim_id`, `text`, `claim_type`
+- **Omitted**: Classification rationale (already consumed by reviewer), raw search results, failed search queries
+- **Validation**: Every `claim_id` from the Typed Claim List appears exactly once. `verdict` and `confidence` are valid enum values. `citation_valid` is non-null for claims where `has_citation` was true.
+- **Reasoning trace**: Summary — `reasoning` field per claim. The Compare stage needs to understand *why* reviewers disagreed, not just *that* they disagreed.
+
+## Artifact: Compare Assessments → Reconcile Disagreements
+- **Name**: Agreement Report
+- **Content**: Per-claim comparison of all three reviewer assessments, identifying agreement and disagreement
+- **Structure**:
+  - `round_number`: integer — which comparison round this is (1 for initial, 2-3 for post-reconciliation)
+  - `agreed_claims[]`: — claims where reviewers reached consensus
+    - `claim_id`: string — (identity, unchanged)
+    - `text`: string — (identity, unchanged)
+    - `claim_type`: enum — (identity, unchanged)
+    - `agreement_status`: enum — `unanimous | majority`
+    - `consensus_verdict`: enum — `supported | contradicted | insufficient_evidence | unverifiable`
+    - `consensus_confidence`: enum — `high | medium | low`
+    - `citation_valid`: boolean | null — agreed citation check result
+    - `consolidated_evidence`: object[] — merged evidence from agreeing reviewers
+  - `disputed_claims[]`: — claims where reviewers disagree
+    - `claim_id`: string — (identity, unchanged)
+    - `text`: string — (identity, unchanged)
+    - `claim_type`: enum — (identity, unchanged)
+    - `agreement_status`: enum — `split`
+    - `disagreement_summary`: string — what specifically the reviewers disagree on
+    - `reviewer_positions[]`:
+      - `reviewer_id`: string
+      - `verdict`: enum
+      - `confidence`: enum
+      - `key_evidence`: string — most relevant evidence cited by this reviewer
+      - `reasoning_summary`: string — condensed version of reviewer's rationale
+    - `previous_disagreement_points`: string[] | null — points of disagreement from prior round (null on round 1)
+    - `position_changed`: boolean | null — whether any reviewer changed position since last round (null on round 1)
+- **Identity fields**: `claim_id`, `text`, `claim_type`
+- **Omitted**: Full evidence lists for agreed claims (consolidated to key items), raw reviewer assessments (summarised into positions)
+- **Validation**: Every `claim_id` from the input appears in exactly one of `agreed_claims` or `disputed_claims`. `agreement_status` values are valid enums. On rounds 2+, `previous_disagreement_points` is non-null for disputed claims.
+- **Reasoning trace**: None — the structure itself (agreed vs. disputed, with positions) is the trace
+
+## Artifact: Reconcile Disagreements → Compare Assessments (loopback)
+- **Name**: Reconciled Assessments
+- **Content**: Updated reviewer assessments for disputed claims only, after re-examination
+- **Structure**:
+  - `round_number`: integer — which reconciliation round produced this (1, 2, or 3)
+  - `revised_assessments[]`:
+    - `claim_id`: string — (identity, unchanged)
+    - `text`: string — (identity, unchanged)
+    - `reviewer_id`: string — which reviewer's position this represents
+    - `previous_verdict`: enum — what the reviewer said before
+    - `revised_verdict`: enum — `supported | contradicted | insufficient_evidence | unverifiable`
+    - `revised_confidence`: enum — `high | medium | low`
+    - `position_changed`: boolean — whether this reviewer changed their position
+    - `change_rationale`: string — why the position changed (or why it was maintained)
+    - `new_evidence`: object[] — any additional evidence found in this round
+      - `source_url`: string
+      - `source_title`: string
+      - `relevant_excerpt`: string
+      - `supports_claim`: boolean
+  - `unresolvable_claims[]`: — claims marked unverifiable after round 3
+    - `claim_id`: string — (identity, unchanged)
+    - `text`: string — (identity, unchanged)
+    - `reason`: string — why agreement could not be reached
+    - `final_positions`: object[] — each reviewer's final position
+- **Identity fields**: `claim_id`, `text`
+- **Omitted**: Agreed claims (not re-examined), full search histories
+- **Validation**: Every `claim_id` from the Agreement Report's `disputed_claims` appears in either `revised_assessments` or `unresolvable_claims`. `round_number` matches expected round. `unresolvable_claims` is only populated on round 3.
+- **Reasoning trace**: Summary — `change_rationale` field. The Compare stage needs to know whether positions genuinely shifted or were merely restated.
+
+## Pipeline Output: Validation Report
+- **Content**: Complete validation report for the source document, ready for human researcher review
+- **Format**: Structured markdown
+- **Structure**:
+  - `summary`:
+    - `total_claims`: integer
+    - `verified_supported`: integer
+    - `verified_contradicted`: integer
+    - `insufficient_evidence`: integer
+    - `unverifiable`: integer
+    - `opinion_claims`: integer — claims classified as opinion (not subject to factual verification)
+  - `claim_results[]`:
+    - `claim_id`: string
+    - `text`: string — verbatim from source
+    - `location`: string — where in the source document
+    - `claim_type`: enum — `factual | analytical | opinion`
+    - `verdict`: enum — `supported | contradicted | insufficient_evidence | unverifiable | opinion_not_verified`
+    - `confidence_score`: enum — `high | medium | low`
+    - `citation_valid`: boolean | null
+    - `citation_notes`: string — summary of citation check
+    - `agreement_status`: enum — `unanimous | majority | split | unresolvable`
+    - `key_evidence`: object[] — top evidence items supporting the verdict
+    - `reconciliation_rounds`: integer — how many rounds it took (0 if agreed initially)
+  - `unverifiable_claims[]`:
+    - `claim_id`: string
+    - `text`: string
+    - `reason`: string
+    - `reviewer_positions`: object[] — final positions of each reviewer
+- **Quality criteria**: Every claim from the source document appears exactly once. No claim silently dropped. Citation checks are binary. Confidence scores reflect reviewer agreement. Unverifiable claims have explicit reasoning.
