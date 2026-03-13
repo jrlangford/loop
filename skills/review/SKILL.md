@@ -135,8 +135,9 @@ Beyond anti-patterns, check design quality:
 - Are any stages carrying scaffolding that belongs to a different stage?
 
 **Implementation structure:**
-- Does the design assume or describe stages as independently invocable skills (each with its own slash command)? If so, flag as INFO: stages should be implemented as reference documents in a shared resource directory, not as standalone skills. `/loop:implement` produces a shared `<prefix>/` directory with `stages/` and `contracts/` subdirectories — stages are read by orchestrators at runtime, not invoked directly.
+- Does the design assume or describe stages as independently invocable skills (each with its own slash command)? If so, flag as INFO: stages should be implemented as reference documents in a shared resource directory, not as standalone skills. `/loop:implement` produces a Claude Code plugin with a shared `skills/<prefix>/` directory containing `stages/` and `contracts/` subdirectories — stages are read by orchestrators at runtime, not invoked directly.
 - Are there artifact schemas that would need to be duplicated across multiple stages? If so, note that `/loop:implement` addresses this via a shared `contracts/` directory — each schema defined once, referenced by all producers and consumers.
+- `/loop:implement` packages the output as a Claude Code plugin (`.claude-plugin/plugin.json`), enabling namespaced skill invocation (`/<prefix>:run`) and distribution via plugin marketplaces.
 
 **Handoff drift resilience:**
 - Do artifact specs use enums and closed vocabularies where the domain allows, or do they rely on free-text fields that invite reinterpretation?

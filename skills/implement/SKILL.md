@@ -1,5 +1,5 @@
 ---
-description: "Translate Loop design artifacts into Claude Code skills — shared resources under a prefix directory, one orchestrator skill per workflow. Use after /loop:review passes or /loop:design completes."
+description: "Translate Loop design artifacts into a Claude Code plugin — shared resources, orchestrator skills, and plugin manifest. Use after /loop:review passes or /loop:design completes."
 argument-hint: "[skill-prefix]"
 ---
 
@@ -29,21 +29,27 @@ If workflow artifacts are missing, generate the shared resource directory only a
 
 ## What You Produce
 
-A shared resource directory and one orchestrator skill per workflow:
+A Claude Code plugin containing a shared resource directory and one orchestrator skill per workflow:
 
 ```
-<prefix>/                           — shared resources (not a skill — no SKILL.md)
-  stages/
-    <stage-name>.md                 — one per stage (transformation instructions)
-  contracts/
-    <artifact-name>.md              — one per artifact (schema, validation, identity fields)
-<prefix>-run/SKILL.md               — orchestrator (single workflow)
-<prefix>-run-<workflow>/SKILL.md    — orchestrator (multiple workflows)
+<prefix>/                           — plugin root
+  .claude-plugin/
+    plugin.json                     — plugin manifest (name, description, version, keywords)
+  skills/
+    <prefix>/                       — shared resources (not a skill — no SKILL.md)
+      stages/
+        <stage-name>.md             — one per stage (transformation instructions)
+      contracts/
+        <artifact-name>.md          — one per artifact (schema, validation, identity fields)
+    run/SKILL.md                    — orchestrator (single workflow)
+    run-<workflow>/SKILL.md         — orchestrator (multiple workflows)
 ```
 
-The `<prefix>/` directory is a shared resource directory, not a skill. It has no `SKILL.md`. It contains the stage instructions and artifact contracts that orchestrator skills reference at runtime. This eliminates duplication — each contract is defined once, referenced by every stage that produces or consumes it.
+The plugin manifest (`.claude-plugin/plugin.json`) packages everything as a distributable Claude Code plugin. The plugin `name` field is the `<prefix>`, so skills are invoked as `/<prefix>:run` (or `/<prefix>:run-<workflow>`). The shared resource directory lives under `skills/<prefix>/` alongside the orchestrator skills — no `SKILL.md`, so it's not invocable but is accessible to orchestrators via relative paths.
 
-Skills are written to a directory the user specifies (default: `skills/` in the current project).
+The shared resource directory contains stage instructions and artifact contracts that orchestrator skills reference at runtime. This eliminates duplication — each contract is defined once, referenced by every stage that produces or consumes it.
+
+Output is written to a directory the user specifies (default: current project directory).
 
 ## Prerequisites
 
@@ -60,13 +66,14 @@ Do not attempt to generate skills without `/skill-creator` — the skill-creator
 Use `$ARGUMENTS` if provided. Otherwise, derive from `transformation.md` (the pipeline's subject) or ask the user. The prefix should be short, lowercase, hyphenated (e.g., `debt`, `review`, `onboard`).
 
 The prefix determines:
-- Shared resource directory: `<prefix>/`
-- Orchestrator skill directories: `<prefix>-run/` or `<prefix>-run-<workflow>/`
-- Workspace directory name: `<prefix>-workspace/`
+- Plugin directory and name: `<prefix>/`
+- Shared resource directory: `<prefix>/skills/<prefix>/`
+- Orchestrator skill directories: `<prefix>/skills/run/` or `<prefix>/skills/run-<workflow>/`
+- Workspace directory name: `<prefix>-workspace/` (runtime, in the project using the plugin)
 
 ### Step 2: Determine output location
 
-Ask the user where to write skills. Default: `skills/` in the current project directory. If the directory exists, check for conflicts and ask before overwriting.
+Ask the user where to write the plugin. Default: current project directory. The plugin directory will be named `<prefix>/`. If the directory exists, check for conflicts and ask before overwriting.
 
 ### Step 3: Read and cross-reference design artifacts
 
@@ -81,9 +88,28 @@ For each workflow, collect:
 - **From `gates.md`**: gate positions, types, criteria, failure routes, max retries
 - **From `loops.md`**: loop types, termination conditions, degradation detectors, iteration caps
 
-### Step 4: Generate contract files
+### Step 4: Generate plugin manifest
 
-For each artifact in `artifacts.md`, create a file in `<prefix>/contracts/`:
+Create `<prefix>/.claude-plugin/plugin.json`:
+
+```json
+{
+  "name": "<prefix>",
+  "description": "<derived from transformation.md — the pipeline's purpose in one sentence>",
+  "version": "1.0.0",
+  "keywords": ["loop-pipeline"]
+}
+```
+
+- **`name`**: the skill prefix (kebab-case). This becomes the plugin namespace — skills are invoked as `/<prefix>:run`.
+- **`description`**: derived from `transformation.md` if available. Describe what the pipeline does, not how.
+- **`keywords`**: always include `"loop-pipeline"` to identify Loop-generated plugins. Add domain-specific keywords as appropriate.
+
+If `transformation.md` includes author or repository information, include `author` and `repository` fields.
+
+### Step 5: Generate contract files
+
+For each artifact in `artifacts.md`, create a file in `<prefix>/skills/<prefix>/contracts/`:
 
 **File name**: Kebab-cased artifact name (e.g., "Classification Result" → `classification-result.md`, "KB Match Set" → `kb-match-set.md`).
 
@@ -95,14 +121,14 @@ For each artifact in `artifacts.md`, create a file in `<prefix>/contracts/`:
 - Omitted fields (explicitly excluded from this artifact)
 - Reasoning trace policy (none, summary, or full — and why)
 
-Also create `<prefix>/contracts/_pipeline.md` containing:
+Also create `<prefix>/skills/<prefix>/contracts/_pipeline.md` containing:
 - Pipeline-wide constants (enums, taxonomies, shared vocabularies)
 - Workspace path conventions (`<prefix>-workspace/` layout)
 - Artifact file naming rules
 
-### Step 5: Generate stage files
+### Step 6: Generate stage files
 
-For each stage in `stages.md`, create a file in `<prefix>/stages/`:
+For each stage in `stages.md`, create a file in `<prefix>/skills/<prefix>/stages/`:
 
 **File name**: Kebab-cased stage name (e.g., "Classify Ticket" → `classify-ticket.md`, "Retrieve Knowledge" → `retrieve-knowledge.md`).
 
@@ -143,11 +169,11 @@ Complexity signals from `stages.md` become specific warnings or strategies:
 - "Arbitrary repo size" → "For large repos, work directory-by-directory."
 - "Error reinforcement risk" → "Verify against source material, don't amplify previous assessments."
 
-### Step 6: Generate orchestrator skills
+### Step 7: Generate orchestrator skills
 
 For each workflow in `loop-workspace/workflows/`, use `/skill-creator` to generate an orchestrator skill. Provide the following content requirements — `/skill-creator` decides the structure and style, but the generated orchestrator must include all of these elements:
 
-1. **Skill name**: `<prefix>-run` (single workflow) or `<prefix>-run-<workflow>` (multiple)
+1. **Skill name**: `run` (single workflow) or `run-<workflow>` (multiple) — the plugin namespace provides the `<prefix>:` prefix automatically
 2. **Purpose**: orchestrate the full pipeline — sequence stages, enforce gates, manage feedback loops
 3. **Precondition checks**: If stages have source or sink dependencies, generate a precondition section that runs before the first stage. For each external dependency, check reachability/configuration (API tokens valid, MCP servers connected, git branches writable, notification channels configured). Classify each as required (abort if missing) or optional (warn and continue in degraded mode). If the pipeline has no external dependencies, omit this section.
 4. **Pipeline overview**: a visual diagram showing stage flow, gates, and loops (derived from `stages.md` + `gates.md` + `loops.md`)
@@ -185,13 +211,18 @@ For each workflow in `loop-workspace/workflows/`, use `/skill-creator` to genera
 
 **Resumption table**: Build from the artifact list — one row per stage, mapping its output artifact to a "skip this phase" decision.
 
-### Step 7: Validate generated output
+### Step 8: Validate generated output
 
 After generating all files, perform both `/skill-creator`'s validation checklist (for orchestrator skills) and the Loop-specific checks below:
 
+**Plugin structure**:
+- [ ] `.claude-plugin/plugin.json` exists with valid `name`, `description`, and `keywords` (includes `"loop-pipeline"`)
+- [ ] Plugin `name` matches the skill prefix
+- [ ] All skills are under `skills/` directory
+
 **Pipeline completeness**:
-- [ ] Every stage in `stages.md` has a corresponding file in `<prefix>/stages/`
-- [ ] Every artifact in `artifacts.md` has a corresponding file in `<prefix>/contracts/`
+- [ ] Every stage in `stages.md` has a corresponding file in `skills/<prefix>/stages/`
+- [ ] Every artifact in `artifacts.md` has a corresponding file in `skills/<prefix>/contracts/`
 - [ ] Every workflow has an orchestrator skill
 - [ ] Every artifact is produced by exactly one stage
 - [ ] Every artifact is consumed by at least one stage (no dead outputs)
@@ -199,8 +230,8 @@ After generating all files, perform both `/skill-creator`'s validation checklist
 - [ ] Every loop in `loops.md` appears in an orchestrator
 
 **Reference integrity**:
-- [ ] Every stage file references contract files that exist in `<prefix>/contracts/`
-- [ ] Every orchestrator references stage files that exist in `<prefix>/stages/`
+- [ ] Every stage file references contract files that exist in `skills/<prefix>/contracts/`
+- [ ] Every orchestrator references stage files that exist in `skills/<prefix>/stages/`
 - [ ] Workspace file paths are consistent across all stage files and orchestrators
 - [ ] Orchestrator gate criteria match contract validation rules
 
@@ -221,15 +252,15 @@ After generating all files, perform both `/skill-creator`'s validation checklist
 **Self-containment** (at the pipeline level):
 - [ ] No file references `loop-workspace/` design artifacts or framework docs
 - [ ] Each stage file's guidance is actionable without external context
-- [ ] The `<prefix>/` directory + orchestrator skill(s) form a complete, portable unit
+- [ ] The plugin directory forms a complete, portable unit (`.claude-plugin/plugin.json` + `skills/`)
 
-### Step 8: Present results
+### Step 9: Present results
 
 Summarise what was generated:
-- File count (contracts + stages + orchestrator skills)
-- Shared resource directory name
+- File count (plugin manifest + contracts + stages + orchestrator skills)
+- Plugin name and invocation format (`/<prefix>:run`)
 - Any design elements that couldn't be cleanly mapped (with explanation)
-- Installation instructions: symlink `<prefix>/` and each `<prefix>-run*/` directory to `~/.claude/skills/`
+- Installation: `claude --plugin-dir ./<prefix>` for local testing, or publish to a marketplace for distribution
 
 ## Guidance
 
@@ -241,21 +272,21 @@ Summarise what was generated:
 
 ### The Shared Resource Directory
 
-The `<prefix>/` directory is the key architectural element. It contains all stage instructions and artifact contracts, shared across workflows.
+The `skills/<prefix>/` directory within the plugin is the key architectural element. It contains all stage instructions and artifact contracts, shared across workflows.
 
-**Why not one skill per stage?** Stage skills installed independently would each need to inline their input and output artifact schemas — duplicating contracts across every producer and consumer. The shared resource directory eliminates this duplication. Contracts are defined once in `<prefix>/contracts/`, referenced by any stage that needs them.
+**Why not one skill per stage?** Stage skills installed independently would each need to inline their input and output artifact schemas — duplicating contracts across every producer and consumer. The shared resource directory eliminates this duplication. Contracts are defined once in `skills/<prefix>/contracts/`, referenced by any stage that needs them.
 
 **Why not put contracts in the workspace?** The workspace (`<prefix>-workspace/`) is for runtime artifacts — the actual data produced by pipeline execution. The shared resource directory is for design-time definitions — schemas, instructions, and validation rules that don't change between runs. Keeping them separate prevents confusion between "what the pipeline produces" and "how the pipeline is defined."
 
-**Installation**: The `<prefix>/` directory must be symlinked to `~/.claude/skills/` alongside the orchestrator skills, so orchestrators can reference stage and contract files via relative paths like `<prefix>/stages/<name>.md`.
+**Installation**: The entire plugin directory is loaded via `claude --plugin-dir ./<prefix>` or installed from a marketplace. Orchestrators reference stage and contract files via relative paths like `<prefix>/stages/<name>.md`.
 
 ### Stages Are Reference Documents, Not Skills
 
-Stage files in `<prefix>/stages/` are instruction documents that orchestrators read at the appropriate time. They are not independently invocable skills (no SKILL.md, no frontmatter, no slash command). This is intentional:
+Stage files in `skills/<prefix>/stages/` are instruction documents that orchestrators read at the appropriate time. They are not independently invocable skills (no SKILL.md, no frontmatter, no slash command). This is intentional:
 
 - **Context isolation**: Each stage runs in a subagent with fresh context — the subagent sees only the stage file, its contracts, and the input artifact. The orchestrator never loads stage files into its own context, which would accumulate working memory across stages and defeat the purpose of staging.
 - **Sequencing control**: The orchestrator controls when each stage runs, what gate checks follow, and what feedback loops apply. Stages don't need to know about this.
-- **Simplicity**: Users run one command (`/<prefix>-run`) instead of invoking N stage skills in sequence.
+- **Simplicity**: Users run one command (`/<prefix>:run`) instead of invoking N stage skills in sequence.
 
 If a user needs to rerun a single stage, the orchestrator's resumption table handles this — existing artifacts are skipped, and execution resumes at the specified phase.
 
@@ -273,7 +304,7 @@ Each orchestrator skill is the only user-facing skill for its workflow. It:
 - **Skill prefix**: Short, lowercase, hyphenated. Describes the pipeline's domain (e.g., `debt`, `review`, `onboard`).
 - **Stage file names**: Kebab-cased verb or verb-noun from stage name (e.g., `classify-ticket.md`, `retrieve-knowledge.md`).
 - **Contract file names**: Kebab-cased artifact name (e.g., `classification-result.md`, `kb-match-set.md`).
-- **Orchestrator names**: `<prefix>-run` for single-workflow pipelines. `<prefix>-run-<workflow>` for multi-workflow.
+- **Orchestrator names**: `run` for single-workflow pipelines, `run-<workflow>` for multi-workflow. Invoked as `/<prefix>:run` or `/<prefix>:run-<workflow>`.
 - **Workspace directory**: `<prefix>-workspace/`. All stages read from and write to this directory.
 
 ### Observability

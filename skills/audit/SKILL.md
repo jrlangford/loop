@@ -156,7 +156,15 @@ These go beyond anti-patterns to assess implementation quality:
   - **No shared resources**: Stages in the same pipeline share concepts (enums, taxonomies, workspace conventions) that must be copy-pasted into each skill rather than defined once.
   - **Skill proliferation**: A 6-stage pipeline produces 7 skills (6 stages + orchestrator). Users see N slash commands when they need one entry point.
   - **False independence**: Stage skills appear independently invocable but rarely make sense outside their pipeline sequence. The independence is architectural overhead without practical benefit.
-- The recommended structure is a shared resource directory (`<prefix>/`) with `stages/` (reference documents) and `contracts/` (artifact schemas), plus orchestrator skills (`<prefix>-run/`) as the only user-facing entry points.
+- The recommended structure is a Claude Code plugin with a shared resource directory (`skills/<prefix>/`) containing `stages/` (reference documents) and `contracts/` (artifact schemas), plus orchestrator skills (`skills/run/`) as the only user-facing entry points.
+
+**Plugin packaging:**
+- Does the implementation include a `.claude-plugin/plugin.json` manifest? If the pipeline is implemented as Claude Code skills without plugin packaging, flag as INFO — plugin packaging enables namespaced invocation (`/<prefix>:run`), prevents skill name collisions, and makes the pipeline distributable.
+- If `plugin.json` exists, check:
+  - Does the `name` field match the skill prefix used throughout the implementation?
+  - Does `keywords` include `"loop-pipeline"` (for Loop-generated pipelines)?
+  - Are all orchestrator skills under the `skills/` directory within the plugin?
+  - Is the shared resource directory also under `skills/` (so it's accessible via relative paths)?
 
 **Loop safety:**
 - Do all loops (including gate retry paths) have a hard iteration cap? A retry path without a maximum is an unbounded loop.
