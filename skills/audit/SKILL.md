@@ -1,5 +1,4 @@
 ---
-name: audit
 description: "Audit an existing implementation against Loop framework principles — anti-pattern checks, structural analysis, and contract alignment. Reads implementation files directly. If loop-workspace design artifacts exist, also reports design-implementation discrepancies. Use on any multi-stage pipeline."
 argument-hint: "[path-or-description]"
 ---

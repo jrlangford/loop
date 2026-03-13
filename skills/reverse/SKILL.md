@@ -1,5 +1,4 @@
 ---
-name: reverse
 description: "Reverse-engineer an existing implementation into Loop design artifacts. Reads implementation files (skills, agents, scripts) and produces loop-workspace artifacts (stages.md, artifacts.md, etc.) as if the design skills had been run. Use on any multi-stage pipeline to get it into Loop vocabulary."
 argument-hint: "[path-or-description]"
 ---

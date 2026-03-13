@@ -1,5 +1,4 @@
 ---
-name: implement
 description: "Translate Loop design artifacts into Claude Code skills — shared resources under a prefix directory, one orchestrator skill per workflow. Use after /loop:review passes or /loop:design completes."
 argument-hint: "[skill-prefix]"
 ---

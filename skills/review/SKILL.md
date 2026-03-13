@@ -1,5 +1,4 @@
 ---
-name: review
 description: "Review a complete pipeline design for anti-patterns, missing gates, unbounded loops, and context issues. Use after completing the design workflow, or anytime on an existing pipeline spec to audit it."
 ---
 

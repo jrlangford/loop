@@ -1,5 +1,4 @@
 ---
-name: align
 description: "Workflow: check alignment between a pipeline's design artifacts and its current implementation — surfaces drift, gaps, and mismatches. Use when design and implementation may have diverged over time."
 argument-hint: "[path-or-description]"
 ---

@@ -1,5 +1,4 @@
 ---
-name: phase-decompose
 description: "Break a transformation into pipeline stages using the one-verb heuristic. Identifies transformation boundaries and information rate limits. Use after /loop:phase-define has produced a transformation definition."
 argument-hint: "[transformation-file]"
 ---

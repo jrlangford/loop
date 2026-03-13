@@ -1,5 +1,4 @@
 ---
-name: phase-gates
 description: "Place validation checkpoints between pipeline stages for a named workflow — what can go wrong, what type of check catches it, where failures route, and what feedback they carry. Use after /loop:phase-artifacts has produced artifact specifications."
 argument-hint: "[workflow-name]"
 ---

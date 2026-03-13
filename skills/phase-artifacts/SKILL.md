@@ -1,5 +1,4 @@
 ---
-name: phase-artifacts
 description: "Specify the typed intermediate representations passed between pipeline stages — what each artifact carries, what it omits, and how it's validated. Use after /loop:phase-decompose has produced a stage list."
 ---
 

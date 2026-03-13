@@ -1,7 +1,6 @@
 ---
-name: design
 description: "Workflow: guided greenfield pipeline design — walks through all design phases from transformation definition to review. Use when designing a new LLM pipeline from scratch."
-argument-hint: "[task-description]"
+t argument-hint: "[task-description]"
 ---
 
 # Loop: Design Workflow

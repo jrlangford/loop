@@ -1,5 +1,4 @@
 ---
-name: phase-feedback
 description: "Design explicit feedback loops for a named workflow — classify each as reinforcing or balancing, set termination conditions, and add degradation detectors. Use after /loop:phase-gates has placed validation checkpoints for this workflow."
 argument-hint: "[workflow-name]"
 ---

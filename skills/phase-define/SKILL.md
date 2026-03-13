@@ -1,5 +1,4 @@
 ---
-name: phase-define
 description: "Define the overall transformation for a Loop pipeline — captures input, desired output, the gap between them, and initial complexity signals. Use when starting a new pipeline design or redefining an existing one."
 argument-hint: "[task-description]"
 ---

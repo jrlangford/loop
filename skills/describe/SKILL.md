@@ -1,5 +1,4 @@
 ---
-name: describe
 description: "Generate a readable markdown summary of a pipeline design with mermaid workflow diagrams. Reads loop-workspace artifacts and produces a single design document. Use after design is complete or partially complete."
 argument-hint: "[workflow-name]"
 ---

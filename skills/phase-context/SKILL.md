@@ -1,5 +1,4 @@
 ---
-name: phase-context
 description: "Budget channel capacity per pipeline stage — what goes in each stage's context window, what stays out, and why. Use after /loop:phase-artifacts or when a pipeline is underperforming due to context issues."
 ---
 

@@ -1,5 +1,4 @@
 ---
-name: analyze
 description: "Workflow: analyze an existing pipeline implementation — reverse-engineer it into Loop design artifacts and audit it for anti-patterns and structural issues. Use on any multi-stage pipeline to understand and evaluate it."
 argument-hint: "[path-or-description]"
 ---
