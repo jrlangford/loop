@@ -36,14 +36,14 @@ Loop is delivered as a set of Claude Code skills that guide pipeline design inte
 | `/loop:phase-context` | Budget channel capacity per stage |
 | `/loop:phase-gates` | Place validation checkpoints (workflow-scoped) |
 | `/loop:phase-feedback` | Design feedback loops (workflow-scoped) |
-| `/loop:review` | Check design for anti-patterns |
-| `/loop:reverse` | Reverse-engineer implementation into Loop vocabulary |
-| `/loop:audit` | Audit implementation against Loop principles |
 
-### Implementation Skills (translate design to code)
+### Standalone Skills
 
 | Skill | Purpose |
 |-------|---------|
+| `/loop:review` | Check design for anti-patterns |
+| `/loop:reverse` | Reverse-engineer implementation into Loop vocabulary |
+| `/loop:audit` | Audit implementation against Loop principles |
 | `/loop:implement` | Generate shared resource directory (stages + contracts) and orchestrator skills from design artifacts |
 
 ### Workflow Skills (orchestrate phase skills)
@@ -53,6 +53,15 @@ Loop is delivered as a set of Claude Code skills that guide pipeline design inte
 | `/loop:design` | Greenfield: define → decompose → artifacts → context → gates → feedback → review |
 | `/loop:analyze` | Existing code: reverse → review → audit |
 | `/loop:align` | Drift check: audit → resolve → re-audit |
+
+## Installation
+
+Install from the [jrlangford-marketplace](https://github.com/jrlangford/jrlangford-marketplace):
+
+```claude
+/plugin marketplace add https://github.com/jrlangford/jrlangford-marketplace
+/plugin install loop@jrlangford-marketplace
+```
 
 ## Quick Start
 
@@ -88,16 +97,6 @@ ln -s "$(pwd)/skills/my-pipeline-run" ~/.claude/skills/my-pipeline-run
 ```
 
 Then restart Claude Code. Your pipeline is now available as `/my-pipeline-run` — run it to test.
-
-## Installation
-
-Requires [just](https://github.com/casey/just).
-
-```sh
-just install    # Symlink skills to ~/.claude/skills/
-just uninstall  # Remove symlinks
-just status     # Show installed skills
-```
 
 ## Workspace Structure
 
