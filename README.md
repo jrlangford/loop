@@ -54,6 +54,41 @@ Loop is delivered as a set of Claude Code skills that guide pipeline design inte
 | `/loop-wf-analyze` | Existing code: reverse → review → audit |
 | `/loop-wf-align` | Drift check: audit → resolve → re-audit |
 
+## Quick Start
+
+Once installed, here's how to go from idea to runnable pipeline skills:
+
+### 1. Design your pipeline
+
+```
+/loop-wf-design "description of what your pipeline does"
+```
+
+This walks you through each design phase interactively: define the transformation, decompose into stages, specify artifacts, budget context, place gates, design feedback loops, and review for anti-patterns. All artifacts are written to `loop-workspace/` in your project.
+
+### 2. Clear context
+
+The design workflow is conversational and will fill your context window. Start a fresh Claude Code session before implementing.
+
+### 3. Implement the design
+
+```
+/loop-implement my-pipeline
+```
+
+This reads `loop-workspace/` and generates Claude Code skills — a shared resource directory (`my-pipeline/`) with stage instructions and contracts, plus orchestrator skills (`my-pipeline-run/`) that wire everything together.
+
+### 4. Symlink skills into your project
+
+The generated skills need to be registered with Claude Code. Symlink them into your local skills directory:
+
+```sh
+ln -s "$(pwd)/skills/my-pipeline" ~/.claude/skills/my-pipeline
+ln -s "$(pwd)/skills/my-pipeline-run" ~/.claude/skills/my-pipeline-run
+```
+
+Then restart Claude Code. Your pipeline is now available as `/my-pipeline-run` — run it to test.
+
 ## Installation
 
 Requires [just](https://github.com/casey/just).
