@@ -1,6 +1,6 @@
 ---
-name: loop-feedback
-description: "Design explicit feedback loops for a named workflow — classify each as reinforcing or balancing, set termination conditions, and add degradation detectors. Use after /loop-gates has placed validation checkpoints for this workflow."
+name: phase-feedback
+description: "Design explicit feedback loops for a named workflow — classify each as reinforcing or balancing, set termination conditions, and add degradation detectors. Use after /loop:phase-gates has placed validation checkpoints for this workflow."
 argument-hint: "[workflow-name]"
 ---
 
@@ -12,7 +12,7 @@ Design the explicit feedback connections for a specific workflow. Loops are work
 
 Read `loop-workspace/stages.md`, `loop-workspace/artifacts.md`, and the workflow's gate specs from `loop-workspace/workflows/<workflow-name>/gates.md`. If any are missing, tell the user which upstream skill to run.
 
-`$ARGUMENTS` should provide the workflow name. If not provided, check `loop-workspace/workflows/` for existing workflows. If exactly one exists, use it. If multiple exist, ask the user which one. If none exist, tell the user to run `/loop-gates <workflow-name>` first.
+`$ARGUMENTS` should provide the workflow name. If not provided, check `loop-workspace/workflows/` for existing workflows. If exactly one exists, use it. If multiple exist, ask the user which one. If none exist, tell the user to run `/loop:phase-gates <workflow-name>` first.
 
 ## What You Produce
 
@@ -139,7 +139,7 @@ Write `loop-workspace/workflows/<workflow-name>/loops.md`:
 
 ### Step 9: Summarise
 
-Present the loop map. The user or a workflow skill (`/loop-wf-design`) determines what to run next.
+Present the loop map. The user or a workflow skill (`/loop:design`) determines what to run next.
 
 ## Guidance
 

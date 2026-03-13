@@ -1,6 +1,6 @@
 ---
-name: loop-context
-description: "Budget channel capacity per pipeline stage — what goes in each stage's context window, what stays out, and why. Use after /loop-artifacts or when a pipeline is underperforming due to context issues."
+name: phase-context
+description: "Budget channel capacity per pipeline stage — what goes in each stage's context window, what stays out, and why. Use after /loop:phase-artifacts or when a pipeline is underperforming due to context issues."
 ---
 
 # Loop: Budget Context
@@ -9,7 +9,7 @@ Design the context specification for each stage — what the LLM sees when execu
 
 ## Input
 
-Read all files in `loop-workspace/` — this skill needs the full pipeline spec. At minimum: `stages.md` and `artifacts.md`. If `gates.md` and `loops.md` exist, incorporate them. If files are missing, tell the user which upstream skills to run, but note that `/loop-context` can also be used standalone on an existing pipeline.
+Read all files in `loop-workspace/` — this skill needs the full pipeline spec. At minimum: `stages.md` and `artifacts.md`. If `gates.md` and `loops.md` exist, incorporate them. If files are missing, tell the user which upstream skills to run, but note that `/loop:phase-context` can also be used standalone on an existing pipeline.
 
 ## What You Produce
 
@@ -34,7 +34,7 @@ For each stage, work through these questions:
 
 **Information rate (is this too much for one channel?):**
 - Is this stage's task too complex for a single inference?
-- If yes, how should it decompose further? (This may trigger revisiting `/loop-decompose`)
+- If yes, how should it decompose further? (This may trigger revisiting `/loop:phase-decompose`)
 
 ### Step 2: Apply the history default
 
@@ -95,12 +95,12 @@ Write `loop-workspace/context-specs.md`:
 
 ### Step 6: Summarise
 
-Present a summary of context decisions. Highlight any stages with non-default history inclusion. The user or a workflow skill (`/loop-wf-design`) determines what to run next.
+Present a summary of context decisions. Highlight any stages with non-default history inclusion. The user or a workflow skill (`/loop:design`) determines what to run next.
 
 ## Guidance
 
 - **Less is more.** The best context spec is the smallest one that lets the stage do its job. Every additional token consumes channel bandwidth — and if it's not signal, it's noise.
 - **Position matters in large contexts.** In very long contexts (100k+ tokens), attention follows a U-shaped curve where mid-context information can be under-weighted relative to the beginning and end ("lost in the middle"). Modern models have significantly reduced this bias, and the effect is negligible in short-to-medium contexts. But when a stage operates near context capacity limits, place the highest-signal content (task instructions, critical constraints) at the start and end; avoid burying key information in the middle of large payloads.
 - **Long generation narrows effective context.** During extended generation, attention sinks (disproportionate weight on initial tokens) combine with autoregressive trajectory commitment to progressively narrow the information the model actually draws from. This reinforces the information rate check: if a stage requires a long generation pass, it may need decomposition — not because the input is too large, but because the output generation itself degrades context utilization.
-- **The artifact is the interface.** If a stage needs information from upstream, it should be in the artifact, not carried as raw history. If it's not in the artifact, ask why — maybe the artifact spec needs updating (revisit `/loop-artifacts`).
+- **The artifact is the interface.** If a stage needs information from upstream, it should be in the artifact, not carried as raw history. If it's not in the artifact, ask why — maybe the artifact spec needs updating (revisit `/loop:phase-artifacts`).
 - **Scaffolding is not a crutch.** If a stage needs extensive instructions to work, the stage may be poorly defined. Simple, well-scoped stages need minimal scaffolding.

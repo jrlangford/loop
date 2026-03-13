@@ -20,7 +20,7 @@
 - **Location**: `workflows/autodoc/` (missing `preconditions.md`)
 - **Finding**: Stage 1 has source dependencies: local filesystem, URLs, and Notion MCP. Currently, Notion MCP availability is checked within Stage 1 execution (context-specs.md scaffolding). If the MCP is misconfigured, Stage 1 discovers this mid-execution and reports which references couldn't be loaded. The pipeline degrades gracefully — this is well-designed. However, a preconditions file would allow the orchestrator to validate Notion MCP connectivity, URL reachability, and file existence before Stage 1 runs, providing faster failure.
 - **Suggested fix**: Optional. The graceful degradation in Stage 1 is sufficient for a pipeline with no required external dependencies. Consider adding preconditions if the pipeline is automated (no human watching Stage 1 output) and Notion references are frequently used.
-- **Skill to re-run**: `/loop-wf-design` Step 7
+- **Skill to re-run**: `/loop:design` Step 7
 
 ---
 

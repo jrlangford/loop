@@ -2,7 +2,7 @@
 
 A design framework for structuring LLM-based information processing as pipelines of stages, with explicit feedback loops, channel capacity budgets, and anti-pattern detection.
 
-Loop is not a runtime framework — it has no scheduler, no orchestrator library, no SDK. It is a design framework for pipelines — a lens that can be applied before, during, and after building. Designs can be translated into Claude Code skills (prompt documents) via `/loop-implement`, which Claude Code then executes directly.
+Loop is not a runtime framework — it has no scheduler, no orchestrator library, no SDK. It is a design framework for pipelines — a lens that can be applied before, during, and after building. Designs can be translated into Claude Code skills (prompt documents) via `/loop:implement`, which Claude Code then executes directly.
 
 ## Core Ideas
 
@@ -30,29 +30,29 @@ Loop is delivered as a set of Claude Code skills that guide pipeline design inte
 
 | Skill | Purpose |
 |-------|---------|
-| `/loop-define` | Define the transformation: input, output, gap, complexity signals |
-| `/loop-decompose` | Break into stages using the one-verb heuristic |
-| `/loop-artifacts` | Specify inter-stage data contracts |
-| `/loop-context` | Budget channel capacity per stage |
-| `/loop-gates` | Place validation checkpoints (workflow-scoped) |
-| `/loop-feedback` | Design feedback loops (workflow-scoped) |
-| `/loop-review` | Check design for anti-patterns |
-| `/loop-reverse` | Reverse-engineer implementation into Loop vocabulary |
-| `/loop-audit` | Audit implementation against Loop principles |
+| `/loop:phase-define` | Define the transformation: input, output, gap, complexity signals |
+| `/loop:phase-decompose` | Break into stages using the one-verb heuristic |
+| `/loop:phase-artifacts` | Specify inter-stage data contracts |
+| `/loop:phase-context` | Budget channel capacity per stage |
+| `/loop:phase-gates` | Place validation checkpoints (workflow-scoped) |
+| `/loop:phase-feedback` | Design feedback loops (workflow-scoped) |
+| `/loop:review` | Check design for anti-patterns |
+| `/loop:reverse` | Reverse-engineer implementation into Loop vocabulary |
+| `/loop:audit` | Audit implementation against Loop principles |
 
 ### Implementation Skills (translate design to code)
 
 | Skill | Purpose |
 |-------|---------|
-| `/loop-implement` | Generate shared resource directory (stages + contracts) and orchestrator skills from design artifacts |
+| `/loop:implement` | Generate shared resource directory (stages + contracts) and orchestrator skills from design artifacts |
 
 ### Workflow Skills (orchestrate phase skills)
 
 | Skill | Path |
 |-------|------|
-| `/loop-wf-design` | Greenfield: define → decompose → artifacts → context → gates → feedback → review |
-| `/loop-wf-analyze` | Existing code: reverse → review → audit |
-| `/loop-wf-align` | Drift check: audit → resolve → re-audit |
+| `/loop:design` | Greenfield: define → decompose → artifacts → context → gates → feedback → review |
+| `/loop:analyze` | Existing code: reverse → review → audit |
+| `/loop:align` | Drift check: audit → resolve → re-audit |
 
 ## Quick Start
 
@@ -61,7 +61,7 @@ Once installed, here's how to go from idea to runnable pipeline skills:
 ### 1. Design your pipeline
 
 ```
-/loop-wf-design "description of what your pipeline does"
+/loop:design "description of what your pipeline does"
 ```
 
 This walks you through each design phase interactively: define the transformation, decompose into stages, specify artifacts, budget context, place gates, design feedback loops, and review for anti-patterns. All artifacts are written to `loop-workspace/` in your project.
@@ -73,7 +73,7 @@ The design workflow is conversational and will fill your context window. Start a
 ### 3. Implement the design
 
 ```
-/loop-implement my-pipeline
+/loop:implement my-pipeline
 ```
 
 This reads `loop-workspace/` and generates Claude Code skills — a shared resource directory (`my-pipeline/`) with stage instructions and contracts, plus orchestrator skills (`my-pipeline-run/`) that wire everything together.

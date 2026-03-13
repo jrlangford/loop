@@ -1,12 +1,12 @@
 ---
-name: loop-reverse
+name: reverse
 description: "Reverse-engineer an existing implementation into Loop design artifacts. Reads implementation files (skills, agents, scripts) and produces loop-workspace artifacts (stages.md, artifacts.md, etc.) as if the design skills had been run. Use on any multi-stage pipeline to get it into Loop vocabulary."
 argument-hint: "[path-or-description]"
 ---
 
 # Loop: Reverse-Engineer Implementation
 
-Read an existing multi-stage pipeline implementation and produce Loop design artifacts — the same files that `/loop-define` through `/loop-context` would produce, but derived from code rather than interactive design.
+Read an existing multi-stage pipeline implementation and produce Loop design artifacts — the same files that `/loop:phase-define` through `/loop:phase-context` would produce, but derived from code rather than interactive design.
 
 ## Loop Vocabulary
 
@@ -66,7 +66,7 @@ Design artifacts in `loop-workspace/`, identical in format to what the design sk
 - `gates.md` — gate specifications
 - `loops.md` — feedback loop specifications
 
-These artifacts can then be used with any `/loop-*` skill — reviewed with `/loop-review`, audited with `/loop-audit`, or refined with individual design skills.
+These artifacts can then be used with any `/loop:*` skill — reviewed with `/loop:review`, audited with `/loop:audit`, or refined with individual design skills.
 
 ## How to Run
 
@@ -91,7 +91,7 @@ Read implementation files to understand the pipeline structure. Look for:
 - **External writes** — what data each stage pushes to external systems (APIs, git, Slack, databases). These are sinks.
 
 Adapt discovery to the implementation type:
-- **Claude Code skills (shared resource structure)**: Look for a `<prefix>/` directory containing `stages/` (stage reference documents) and `contracts/` (artifact schemas). Orchestrator skills (`<prefix>-run/SKILL.md`) sequence stages and manage gates/loops. Stage boundaries are the files in `stages/`. Artifacts are defined by the files in `contracts/`. This is the structure `/loop-implement` produces.
+- **Claude Code skills (shared resource structure)**: Look for a `<prefix>/` directory containing `stages/` (stage reference documents) and `contracts/` (artifact schemas). Orchestrator skills (`<prefix>-run/SKILL.md`) sequence stages and manage gates/loops. Stage boundaries are the files in `stages/`. Artifacts are defined by the files in `contracts/`. This is the structure `/loop:implement` produces.
 - **Claude Code skills (one skill per stage)**: Each stage is an independent skill with its own `SKILL.md` and slash command. Stage boundaries are skill invocations. Artifacts are the files skills produce. Note: this structure duplicates artifact schemas across skills — flag this in the synthesis notes.
 - **Scripts/code**: Read orchestration logic, function signatures, data flow.
 - **Mixed**: Some implementations combine skill definitions with code. Read both.
@@ -152,7 +152,7 @@ For each artifact, note where the mapping from implementation to Loop vocabulary
 
 ### Step 4: Summarise
 
-Present what was reverse-engineered: stage count, artifact count, loops found, any flags raised during synthesis. The user or a workflow skill (`/loop-wf-analyze`) determines what to run next.
+Present what was reverse-engineered: stage count, artifact count, loops found, any flags raised during synthesis. The user or a workflow skill (`/loop:analyze`) determines what to run next.
 
 ## Guidance
 

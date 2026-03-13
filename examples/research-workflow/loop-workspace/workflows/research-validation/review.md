@@ -12,7 +12,7 @@
 - **Anti-pattern**: None
 - **Finding**: Verify Claims and Reconcile Disagreements both depend on web search as an external source. No preconditions are defined to validate web search availability before the pipeline runs. If web search is unavailable or rate-limited mid-pipeline, the failure occurs after Extract and Classify have already run — wasting those calls.
 - **Suggested fix**: Define `preconditions.md` for this workflow with a web search availability check (required, not optional — the pipeline cannot function without it).
-- **Skill to re-run**: Step 7 of `/loop-wf-design` (preconditions)
+- **Skill to re-run**: Step 7 of `/loop:design` (preconditions)
 
 ### INFO: Stochastic validation not addressed in design
 - **Location**: General (all artifacts)

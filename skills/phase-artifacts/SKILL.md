@@ -1,6 +1,6 @@
 ---
-name: loop-artifacts
-description: "Specify the typed intermediate representations passed between pipeline stages — what each artifact carries, what it omits, and how it's validated. Use after /loop-decompose has produced a stage list."
+name: phase-artifacts
+description: "Specify the typed intermediate representations passed between pipeline stages — what each artifact carries, what it omits, and how it's validated. Use after /loop:phase-decompose has produced a stage list."
 ---
 
 # Loop: Specify Artifacts
@@ -9,7 +9,7 @@ Define the artifact (intermediate representation) at each stage boundary. Artifa
 
 ## Input
 
-Read `loop-workspace/stages.md`. If it doesn't exist, tell the user to run `/loop-decompose` first.
+Read `loop-workspace/stages.md`. If it doesn't exist, tell the user to run `/loop:phase-decompose` first.
 
 ## What You Produce
 
@@ -36,7 +36,7 @@ For each artifact, ask the user these questions:
 **Challenge weak answers:**
 - "Everything" for what it carries → push for specific fields. An artifact should contain exactly what downstream stages need, no more.
 - "Nothing" for what to omit → push back. Every upstream stage produces more than the downstream stage needs. What specifically is discarded?
-- "No validation needed" → note it but flag that `/loop-gates` will revisit this.
+- "No validation needed" → note it but flag that `/loop:phase-gates` will revisit this.
 
 ### Step 3: Reduce the interpretation surface
 
@@ -92,7 +92,7 @@ Write `loop-workspace/artifacts.md`:
 - **Structure**: [Fields, schema, format]
 - **Identity fields**: [Fields that must not mutate across stages — source refs, IDs, verbatim quotes]
 - **Omitted**: [What the upstream stage produced but this artifact excludes]
-- **Validation**: [How to check conformance — feeds into /loop-gates]
+- **Validation**: [How to check conformance — feeds into /loop:phase-gates]
 - **Reasoning trace**: [None | Summary | Full] — [rationale for choice]
 
 ## Artifact: [Stage B] → [Stage C]
@@ -106,7 +106,7 @@ Write `loop-workspace/artifacts.md`:
 
 ### Step 8: Summarise
 
-Present a summary of the artifact chain. The user or a workflow skill (`/loop-wf-design`) determines what to run next.
+Present a summary of the artifact chain. The user or a workflow skill (`/loop:design`) determines what to run next.
 
 ## Guidance
 

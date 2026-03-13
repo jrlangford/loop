@@ -1,12 +1,12 @@
 ---
-name: loop-define
+name: phase-define
 description: "Define the overall transformation for a Loop pipeline — captures input, desired output, the gap between them, and initial complexity signals. Use when starting a new pipeline design or redefining an existing one."
 argument-hint: "[task-description]"
 ---
 
 # Loop: Define Transformation
 
-Define the overall transformation for an LLM pipeline using the Loop framework. This is the entry point — it produces the transformation definition artifact that downstream skills (`/loop-decompose`, `/loop-artifacts`, etc.) consume.
+Define the overall transformation for an LLM pipeline using the Loop framework. This is the entry point — it produces the transformation definition artifact that downstream skills (`/loop:phase-decompose`, `/loop:phase-artifacts`, etc.) consume.
 
 ## What You Produce
 
@@ -48,7 +48,7 @@ Ask the user these questions. Challenge vague or incomplete answers — cite the
 
 **Transformation Gap:**
 - What's hard about getting from input to output?
-- Where would a single LLM call struggle? (This surfaces natural decomposition points — flag them for `/loop-decompose`)
+- Where would a single LLM call struggle? (This surfaces natural decomposition points — flag them for `/loop:phase-decompose`)
 - Could a single well-prompted call handle the whole task? Assess using these signals:
 
   **Signals that a single call is sufficient** (pipeline adds overhead without benefit):
@@ -110,11 +110,11 @@ Write `loop-workspace/transformation.md` using this structure:
 
 ### Step 5: Summarise
 
-Present a brief summary of the transformation definition. The user or a workflow skill (`/loop-wf-design`) determines what to run next.
+Present a brief summary of the transformation definition. The user or a workflow skill (`/loop:design`) determines what to run next.
 
 ## Guidance
 
 - **Ask, don't assume.** If the user says "summarise documents," push: What kind of documents? What makes a good summary? Who reads it?
-- **Flag decomposition hints.** When the user describes something that sounds like multiple transformations, note it — but don't decompose yet. That's `/loop-decompose`'s job.
+- **Flag decomposition hints.** When the user describes something that sounds like multiple transformations, note it — but don't decompose yet. That's `/loop:phase-decompose`'s job.
 - **Keep it grounded.** The transformation definition should describe what exists and what's needed, not prescribe implementation. No stages, no loops, no architecture yet.
-- **Reference the framework.** When challenging a decision, point to the relevant principle — e.g., "Each stage should do one thing well. This sounds like it might need decomposition, which we'll handle in `/loop-decompose`."
+- **Reference the framework.** When challenging a decision, point to the relevant principle — e.g., "Each stage should do one thing well. This sounds like it might need decomposition, which we'll handle in `/loop:phase-decompose`."

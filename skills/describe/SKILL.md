@@ -1,5 +1,5 @@
 ---
-name: loop-describe
+name: describe
 description: "Generate a readable markdown summary of a pipeline design with mermaid workflow diagrams. Reads loop-workspace artifacts and produces a single design document. Use after design is complete or partially complete."
 argument-hint: "[workflow-name]"
 ---
@@ -33,7 +33,7 @@ A file named `loop-workspace/design.md` (or `loop-workspace/workflows/<name>/des
 
 Check which files exist in `loop-workspace/`. Note what's present and what's missing. The document should describe what's been designed so far — don't refuse to produce output because some artifacts are missing.
 
-Minimum requirement: `stages.md` must exist. Without stages there is nothing to describe. If only `transformation.md` exists, tell the user to run `/loop-decompose` first.
+Minimum requirement: `stages.md` must exist. Without stages there is nothing to describe. If only `transformation.md` exists, tell the user to run `/loop:phase-decompose` first.
 
 ### Step 2: Build the pipeline flow diagram
 
@@ -166,12 +166,12 @@ Assemble the markdown document with these sections. Include only sections for wh
 
 ### Step 5: Present the document
 
-Tell the user where the file was written. Note any sections that were thin due to missing upstream artifacts — suggest which `/loop-*` skill to run to fill the gaps.
+Tell the user where the file was written. Note any sections that were thin due to missing upstream artifacts — suggest which `/loop:*` skill to run to fill the gaps.
 
 ## Guidance
 
-- **Describe, don't prescribe.** This document reflects the current design. Don't suggest improvements — that's `/loop-review`'s job. If you notice issues, mention them briefly but don't derail the description.
+- **Describe, don't prescribe.** This document reflects the current design. Don't suggest improvements — that's `/loop:review`'s job. If you notice issues, mention them briefly but don't derail the description.
 - **Diagrams over prose.** Prefer the mermaid diagram to carry the structural story. The text sections add detail the diagram can't show (context budgets, artifact field types, termination conditions).
-- **Keep it current.** This document is a snapshot. If the design changes, re-run `/loop-describe` to regenerate. Don't manually edit `design.md` — it's a derived artifact.
+- **Keep it current.** This document is a snapshot. If the design changes, re-run `/loop:describe` to regenerate. Don't manually edit `design.md` — it's a derived artifact.
 - **Readable by non-designers.** Someone unfamiliar with the Loop framework should be able to read this document and understand what the pipeline does, how data flows, where validation happens, and what can go wrong. Avoid framework jargon without brief explanation.
 - **Diagram size limits.** Mermaid diagrams become unreadable past ~15 nodes. For large pipelines, use subgraphs to group related stages, or split into multiple diagrams (e.g., one per workflow phase). Prefer clarity over completeness.

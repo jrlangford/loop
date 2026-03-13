@@ -16,7 +16,7 @@ Three observations converge to motivate this framework:
 
 The Loop framework addresses all three by providing **a design framework** for structuring LLM-based information processing as a pipeline of stages, each performing a bounded set of transformations on well-defined artifacts, with explicit feedback loops (reinforcing or balancing) designed into the connections between stages.
 
-Loop is not a runtime framework or execution engine — it has no scheduler, no orchestrator library, no SDK. It is **a design framework for pipelines** — a lens that can be applied before, during, and after building. The framework does produce implementable artifacts: `/loop-implement` translates a completed design into Claude Code skills (structured prompt documents), which Claude Code then executes directly. The skills are the implementation, not a separate runtime layer.
+Loop is not a runtime framework or execution engine — it has no scheduler, no orchestrator library, no SDK. It is **a design framework for pipelines** — a lens that can be applied before, during, and after building. The framework does produce implementable artifacts: `/loop:implement` translates a completed design into Claude Code skills (structured prompt documents), which Claude Code then executes directly. The skills are the implementation, not a separate runtime layer.
 
 Importantly, this is not a "design first, build later" framework. Design and implementation co-form: working through the framework produces understanding that changes the design; building reveals things the framework missed; running the pipeline surfaces dynamics that reshape both. The worksheets in this document are not a gate before implementation — they are a lens you apply iteratively as the pipeline and your understanding of it evolve together.
 
@@ -820,39 +820,39 @@ The design process in Section 4.1 maps to skills at each level:
 
 | Skill | Purpose | Input | Output |
 |-------|---------|-------|--------|
-| **`/loop-define`** | Define the overall transformation — input, desired output, the gap between them | Natural language description of the task | `transformation.md` |
-| **`/loop-decompose`** | Decompose into stages using the one-verb heuristic | Transformation definition | `stages.md` |
-| **`/loop-artifacts`** | Specify the artifact between each pair of stages | Stage list | `artifacts.md` |
-| **`/loop-context`** | Budget context per stage — channel capacity worksheet | Stage list + artifact specs | `context-specs.md` |
+| **`/loop:phase-define`** | Define the overall transformation — input, desired output, the gap between them | Natural language description of the task | `transformation.md` |
+| **`/loop:phase-decompose`** | Decompose into stages using the one-verb heuristic | Transformation definition | `stages.md` |
+| **`/loop:phase-artifacts`** | Specify the artifact between each pair of stages | Stage list | `artifacts.md` |
+| **`/loop:phase-context`** | Budget context per stage — channel capacity worksheet | Stage list + artifact specs | `context-specs.md` |
 
 **Workflow-level skills** (compose stages into specific pipelines):
 
 | Skill | Purpose | Input | Output |
 |-------|---------|-------|--------|
-| **`/loop-gates`** | Place gates for a named workflow — what checks, where failures route | Stage list + artifact specs + workflow name | `workflows/<name>/gates.md` |
-| **`/loop-feedback`** | Design feedback loops for a named workflow — type, termination, degradation | Stage + artifact + gate specs + workflow name | `workflows/<name>/loops.md` |
+| **`/loop:phase-gates`** | Place gates for a named workflow — what checks, where failures route | Stage list + artifact specs + workflow name | `workflows/<name>/gates.md` |
+| **`/loop:phase-feedback`** | Design feedback loops for a named workflow — type, termination, degradation | Stage + artifact + gate specs + workflow name | `workflows/<name>/loops.md` |
 
 **Cross-level skills** (review, reverse-engineer, audit):
 
 | Skill | Purpose | Input | Output |
 |-------|---------|-------|--------|
-| **`/loop-review`** | Review design for anti-patterns | Stage-level artifacts + workflow specs | `review.md` or `workflows/<name>/review.md` |
-| **`/loop-reverse`** | Reverse-engineer implementation into Loop artifacts | Implementation files | Stage-level + workflow-level artifacts |
-| **`/loop-audit`** | Audit implementation against Loop principles | Implementation files + (optionally) design artifacts | `audit.md` |
+| **`/loop:review`** | Review design for anti-patterns | Stage-level artifacts + workflow specs | `review.md` or `workflows/<name>/review.md` |
+| **`/loop:reverse`** | Reverse-engineer implementation into Loop artifacts | Implementation files | Stage-level + workflow-level artifacts |
+| **`/loop:audit`** | Audit implementation against Loop principles | Implementation files + (optionally) design artifacts | `audit.md` |
 
 **Workflow orchestrator skills** (guide the user through a complete path):
 
 | Skill | Purpose | Composes |
 |-------|---------|----------|
-| **`/loop-wf-design`** | Greenfield pipeline design | define → decompose → artifacts → context → gates → feedback → review |
-| **`/loop-wf-analyze`** | Analyze existing implementation | reverse → review → audit |
-| **`/loop-wf-align`** | Check design-implementation alignment | audit → resolve → re-audit |
+| **`/loop:design`** | Greenfield pipeline design | define → decompose → artifacts → context → gates → feedback → review |
+| **`/loop:analyze`** | Analyze existing implementation | reverse → review → audit |
+| **`/loop:align`** | Check design-implementation alignment | audit → resolve → re-audit |
 
 Stage-level skills produce artifacts that are workflow-independent. Workflow-level skills produce artifacts scoped to a named workflow. The same stages can be wired into multiple workflows with different gate criteria and loop configurations.
 
-**Implementation output** (`/loop-implement`):
+**Implementation output** (`/loop:implement`):
 
-`/loop-implement` translates a completed design into a shared resource directory and orchestrator skills:
+`/loop:implement` translates a completed design into a shared resource directory and orchestrator skills:
 
 ```
 <prefix>/                           — shared resources (not a skill)
@@ -872,17 +872,17 @@ Each skill should:
 - **Ask, not assume.** The skill walks the designer through the worksheet questions, challenging weak or missing answers rather than filling in defaults silently.
 - **Produce a durable artifact.** Each skill outputs a structured file (markdown or structured data) that becomes input to the next skill. The designer can review, edit, and re-run any skill without losing downstream work.
 - **Reference the framework.** When challenging a design decision, the skill should cite the relevant principle (e.g., "This stage receives full history — Section 4.2 defaults to none. What does this stage need from history that isn't in the input artifact?").
-- **Detect anti-patterns early.** The review skill checks for all anti-patterns in Section 6, but individual skills should flag obvious issues as they arise (e.g., `/loop-decompose` flagging a stage that contains multiple verbs).
+- **Detect anti-patterns early.** The review skill checks for all anti-patterns in Section 6, but individual skills should flag obvious issues as they arise (e.g., `/loop:phase-decompose` flagging a stage that contains multiple verbs).
 
 ### 9.3 Workflows
 
 The skills support three entry points:
 
-**Design-forward** (greenfield): Stage-level first (`/loop-define` → `/loop-decompose` → `/loop-artifacts` → `/loop-context`), then workflow-level (`/loop-gates` → `/loop-feedback`), then `/loop-review`. Start from a task description, produce a complete pipeline specification. Multiple workflows can be defined over the same stages.
+**Design-forward** (greenfield): Stage-level first (`/loop:phase-define` → `/loop:phase-decompose` → `/loop:phase-artifacts` → `/loop:phase-context`), then workflow-level (`/loop:phase-gates` → `/loop:phase-feedback`), then `/loop:review`. Start from a task description, produce a complete pipeline specification. Multiple workflows can be defined over the same stages.
 
-**Implementation-backward** (existing code): `/loop-reverse` to produce design artifacts from implementation files, then `/loop-review` to check the design, or `/loop-audit` to check the implementation directly. Use individual design skills to address specific findings.
+**Implementation-backward** (existing code): `/loop:reverse` to produce design artifacts from implementation files, then `/loop:review` to check the design, or `/loop:audit` to check the implementation directly. Use individual design skills to address specific findings.
 
-**Continuous alignment**: After implementation, `/loop-audit` compares implementation against design artifacts and reports discrepancies — design drift, implementation gaps, structural mismatches, and undesigned behavior. This closes the loop between design and implementation.
+**Continuous alignment**: After implementation, `/loop:audit` compares implementation against design artifacts and reports discrepancies — design drift, implementation gaps, structural mismatches, and undesigned behavior. This closes the loop between design and implementation.
 
 The designer is never locked into a linear process — any skill can be re-run independently once its input artifact exists.
 

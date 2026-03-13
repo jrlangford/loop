@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Loop is a design framework (not a runtime framework — no scheduler, no orchestrator library, no SDK) for structuring LLM-based information processing as pipelines of stages with explicit feedback loops, channel capacity budgets, and anti-pattern detection. It is delivered as a set of Claude Code skills that guide pipeline design interactively. Completed designs can be translated into implementable Claude Code skills via `/loop-implement`.
+Loop is a design framework (not a runtime framework — no scheduler, no orchestrator library, no SDK) for structuring LLM-based information processing as pipelines of stages with explicit feedback loops, channel capacity budgets, and anti-pattern detection. It is delivered as a set of Claude Code skills that guide pipeline design interactively. Completed designs can be translated into implementable Claude Code skills via `/loop:implement`.
 
 ## Commands
 
@@ -30,13 +30,11 @@ Changes to the framework should flow into skills where relevant. Changes to skil
 
 ### Skill Categories
 
-**Phase skills** (each produces one artifact): `loop-define`, `loop-decompose`, `loop-artifacts`, `loop-context`, `loop-gates`, `loop-feedback`, `loop-review`, `loop-reverse`, `loop-audit`
+**Workflow entrypoints** (orchestrate phase skills): `design` (greenfield), `analyze` (existing code), `align` (drift check)
 
-**Implementation skills** (translate design to code): `loop-implement` (generate shared resource directory + orchestrator skills from design artifacts)
+**Phase skills** (each produces one artifact): `phase-define`, `phase-decompose`, `phase-artifacts`, `phase-context`, `phase-gates`, `phase-feedback`
 
-**Documentation skills** (summarize design for humans): `loop-describe` (generate readable markdown with mermaid workflow diagrams from design artifacts)
-
-**Workflow skills** (orchestrate phase skills): `loop-wf-design` (greenfield), `loop-wf-analyze` (existing code), `loop-wf-align` (drift check)
+**Standalone skills**: `review` (check design artifacts), `reverse` (reverse-engineer implementation), `audit` (check implementation against principles), `implement` (generate Claude Code skills from design), `describe` (generate readable markdown with mermaid diagrams)
 
 ### Pipeline Two-Level Split
 

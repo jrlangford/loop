@@ -1,5 +1,5 @@
 ---
-name: loop-wf-design
+name: design
 description: "Workflow: guided greenfield pipeline design — walks through all design phases from transformation definition to review. Use when designing a new LLM pipeline from scratch."
 argument-hint: "[task-description]"
 ---
@@ -11,9 +11,9 @@ Orchestrate the full design-forward workflow for a new LLM pipeline. This skill 
 ## Workflow Sequence
 
 ```
-Stage level:  /loop-define → /loop-decompose → /loop-artifacts → /loop-context
-Workflow level:  /loop-gates <name> → /loop-feedback <name>
-Review:  /loop-review
+Stage level:  /loop:phase-define → /loop:phase-decompose → /loop:phase-artifacts → /loop:phase-context
+Workflow level:  /loop:phase-gates <name> → /loop:phase-feedback <name>
+Review:  /loop:review
 ```
 
 ## How to Run
@@ -22,7 +22,7 @@ Review:  /loop-review
 
 Look for `loop-workspace/` in the current project directory.
 
-- **No workspace**: Start from `/loop-define` (Step 2)
+- **No workspace**: Start from `/loop:phase-define` (Step 2)
 - **Workspace exists with some artifacts**: Inventory what's present. Determine which phase to resume from — the first phase whose output artifact is missing. Present status to the user and ask if they want to continue from where they left off or start fresh.
 
 ### Step 2: Run stage-level phases
@@ -31,10 +31,10 @@ These produce reusable, workflow-independent artifacts.
 
 | Phase | Skill | Precondition | Produces |
 |-------|-------|-------------|----------|
-| 1 | `/loop-define` | None | `transformation.md` |
-| 2 | `/loop-decompose` | `transformation.md` exists | `stages.md` |
-| 3 | `/loop-artifacts` | `stages.md` exists | `artifacts.md` |
-| 4 | `/loop-context` | `stages.md` + `artifacts.md` exist | `context-specs.md` |
+| 1 | `/loop:phase-define` | None | `transformation.md` |
+| 2 | `/loop:phase-decompose` | `transformation.md` exists | `stages.md` |
+| 3 | `/loop:phase-artifacts` | `stages.md` exists | `artifacts.md` |
+| 4 | `/loop:phase-context` | `stages.md` + `artifacts.md` exist | `context-specs.md` |
 
 Before each phase:
 - Verify preconditions are met (upstream artifacts exist)
@@ -55,21 +55,21 @@ These produce artifacts scoped to the named workflow under `loop-workspace/workf
 
 | Phase | Skill | Precondition | Produces |
 |-------|-------|-------------|----------|
-| 5 | `/loop-gates <name>` | `stages.md` + `artifacts.md` exist | `workflows/<name>/gates.md` |
-| 6 | `/loop-feedback <name>` | Above + `workflows/<name>/gates.md` exists | `workflows/<name>/loops.md` |
+| 5 | `/loop:phase-gates <name>` | `stages.md` + `artifacts.md` exist | `workflows/<name>/gates.md` |
+| 6 | `/loop:phase-feedback <name>` | Above + `workflows/<name>/gates.md` exists | `workflows/<name>/loops.md` |
 
 ### Step 5: Review
 
-Run `/loop-review`. It reviews stage-level artifacts and the active workflow.
+Run `/loop:review`. It reviews stage-level artifacts and the active workflow.
 
 Before presenting results, verify the design includes **context isolation guarantees**:
 - `context-specs.md` should specify that each stage runs in a fresh context (subagent delegation) — not inline in the orchestrator
 - Semantic gates should be specified as running in dedicated clean contexts (artifact + validation criteria only), not sharing the producing stage's context
-- If `context-specs.md` is silent on isolation model, flag this as a WARNING to the user and suggest re-running `/loop-context` to address it
+- If `context-specs.md` is silent on isolation model, flag this as a WARNING to the user and suggest re-running `/loop:phase-context` to address it
 
 Then:
 - If no ERROR-severity issues: the design is complete. Present the full artifact inventory.
-- If ERROR-severity issues exist: present them and ask the user which to address. For each, identify which upstream skill to re-run. After fixes, re-run `/loop-review` (max 3 review cycles).
+- If ERROR-severity issues exist: present them and ask the user which to address. For each, identify which upstream skill to re-run. After fixes, re-run `/loop:review` (max 3 review cycles).
 
 ### Step 6: Additional workflows (optional)
 
@@ -94,12 +94,12 @@ When all workflows are designed (review passes or user accepts remaining issues)
 - Present a summary: stage count, artifact count, workflow count, gates and loops per workflow
 - Note any accepted warnings
 - The `loop-workspace/` directory contains the complete specification
-- Suggest running `/loop-implement` to generate Claude Code skills from the design
+- Suggest running `/loop:implement` to generate Claude Code skills from the design
 
 ## Guidance
 
 - **You are the orchestrator, not the executor.** Each phase is handled by its own skill. Your job is sequencing, precondition checking, and progress tracking.
-- **The user can exit at any point.** Re-invoking `/loop-wf-design` should detect existing workspace state and resume.
-- **Don't skip phases.** Even if the user says "I don't need gates," run `/loop-gates` — it may flag that explicitly. The skill will handle the "no gates needed" case.
-- **Pass `$ARGUMENTS` to `/loop-define`** if the user provided a task description.
+- **The user can exit at any point.** Re-invoking `/loop:design` should detect existing workspace state and resume.
+- **Don't skip phases.** Even if the user says "I don't need gates," run `/loop:phase-gates` — it may flag that explicitly. The skill will handle the "no gates needed" case.
+- **Pass `$ARGUMENTS` to `/loop:phase-define`** if the user provided a task description.
 - **Stage-level artifacts are shared.** If the user defines multiple workflows, stages, artifacts, and context specs are defined once and reused. Only gates and loops are per-workflow.

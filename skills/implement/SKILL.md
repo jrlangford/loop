@@ -1,6 +1,6 @@
 ---
-name: loop-implement
-description: "Translate Loop design artifacts into Claude Code skills — shared resources under a prefix directory, one orchestrator skill per workflow. Use after /loop-review passes or /loop-wf-design completes."
+name: implement
+description: "Translate Loop design artifacts into Claude Code skills — shared resources under a prefix directory, one orchestrator skill per workflow. Use after /loop:review passes or /loop:design completes."
 argument-hint: "[skill-prefix]"
 ---
 
@@ -24,9 +24,9 @@ Read all files in `loop-workspace/`:
 - `workflows/<name>/gates.md` — gate specifications
 - `workflows/<name>/loops.md` — feedback loop specifications
 
-If `stages.md` or `artifacts.md` don't exist, tell the user to run `/loop-decompose` and `/loop-artifacts` first (or the full `/loop-wf-design` workflow).
+If `stages.md` or `artifacts.md` don't exist, tell the user to run `/loop:phase-decompose` and `/loop:phase-artifacts` first (or the full `/loop:design` workflow).
 
-If workflow artifacts are missing, generate the shared resource directory only and tell the user to run `/loop-gates` and `/loop-feedback` to enable orchestrator generation.
+If workflow artifacts are missing, generate the shared resource directory only and tell the user to run `/loop:phase-gates` and `/loop:phase-feedback` to enable orchestrator generation.
 
 ## What You Produce
 
@@ -50,7 +50,7 @@ Skills are written to a directory the user specifies (default: `skills/` in the 
 
 This skill requires `/skill-creator` to be installed. Before proceeding, check whether `/skill-creator` is available (it should appear in the list of installed skills). If it is not installed, stop and tell the user:
 
-> `/loop-implement` requires the `skill-creator` skill to generate well-structured Claude Code skills. Install it from the official Claude plugins marketplace (`plugin-dev` plugin), then re-run `/loop-implement`.
+> `/loop:implement` requires the `skill-creator` skill to generate well-structured Claude Code skills. Install it from the official Claude plugins marketplace (`plugin-dev` plugin), then re-run `/loop:implement`.
 
 Do not attempt to generate skills without `/skill-creator` — the skill-creator provides the authoritative conventions for skill structure, progressive disclosure, writing style, and validation that this skill depends on.
 
@@ -292,7 +292,7 @@ Include a "Pipeline Run Summary" section at the end of each orchestrator run tha
 ### What Not to Generate
 
 - **Don't generate runtime code.** Skills are prompt documents, not programs. They instruct Claude Code what to do — they don't execute logic themselves.
-- **Don't generate tests.** Skills are validated by `/loop-audit`, not by test suites.
+- **Don't generate tests.** Skills are validated by `/loop:audit`, not by test suites.
 - **Don't generate documentation beyond the skills.** The orchestrator skill describes the pipeline. A README is unnecessary.
 - **Don't add framework concepts.** Only include framework concepts that are directly needed for the stage or orchestrator to function.
 
@@ -300,7 +300,7 @@ Include a "Pipeline Run Summary" section at the end of each orchestrator run tha
 
 If the design artifacts are incomplete or ambiguous:
 
-- **Missing context specs**: Generate stage files without detailed context guidance. Note which stages would benefit from running `/loop-context`.
-- **Missing gates/loops**: Generate the shared resource directory only. Tell the user the orchestrator needs `/loop-gates` and `/loop-feedback`.
+- **Missing context specs**: Generate stage files without detailed context guidance. Note which stages would benefit from running `/loop:phase-context`.
+- **Missing gates/loops**: Generate the shared resource directory only. Tell the user the orchestrator needs `/loop:phase-gates` and `/loop:phase-feedback`.
 - **Ambiguous artifact formats**: Ask the user to clarify. Don't guess at field structures — a wrong contract creates mismatches across the entire pipeline.
 - **Stages that don't map cleanly**: Some stages may be infrastructure (setup, cleanup) rather than transformations. Generate them as stage files but note in guidance that they're mechanical, not analytical.

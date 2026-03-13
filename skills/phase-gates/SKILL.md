@@ -1,6 +1,6 @@
 ---
-name: loop-gates
-description: "Place validation checkpoints between pipeline stages for a named workflow — what can go wrong, what type of check catches it, where failures route, and what feedback they carry. Use after /loop-artifacts has produced artifact specifications."
+name: phase-gates
+description: "Place validation checkpoints between pipeline stages for a named workflow — what can go wrong, what type of check catches it, where failures route, and what feedback they carry. Use after /loop:phase-artifacts has produced artifact specifications."
 argument-hint: "[workflow-name]"
 ---
 
@@ -121,11 +121,11 @@ Create the workflow directory if needed (`loop-workspace/workflows/<workflow-nam
 
 ### Step 7: Summarise
 
-Present the gate map. The user or a workflow skill (`/loop-wf-design`) determines what to run next.
+Present the gate map. The user or a workflow skill (`/loop:design`) determines what to run next.
 
 ## Guidance
 
-- **Gates are not loops.** A gate checks an artifact; a loop is an iterative process. Gate failure may *trigger* a loop (retry), but the gate itself is a checkpoint. Loop design is `/loop-feedback`'s job.
+- **Gates are not loops.** A gate checks an artifact; a loop is an iterative process. Gate failure may *trigger* a loop (retry), but the gate itself is a checkpoint. Loop design is `/loop:phase-feedback`'s job.
 - **Phantom Feedback Loop warning.** If a gate's criteria are so loose it never fails, it's a Phantom Feedback Loop — a loop that exists on the diagram but provides no actual corrective signal. Push for criteria that would actually catch real problems. If a gate almost never triggers its failure path, either tighten the criteria or remove the gate and its associated loop.
 - **Escalation is required.** Every gate must answer "what happens after max retries?" Infinite retry is not an answer.
 - **Re-grounding for long pipelines.** For pipelines with 5+ stages, consider adding a re-grounding gate — a checkpoint that reads the original pipeline input alongside the current artifact and flags divergence. This is an explicit balancing check against cumulative drift that no individual gate would detect because it accumulates gradually. Design it as a semantic gate whose context contains only the current artifact, the original pipeline input, and criteria for acceptable divergence. Place it at or after the midpoint of the pipeline. Re-grounding does not mean re-processing — it means comparing the current artifact's claims against the original input to surface where interpretation has shifted.

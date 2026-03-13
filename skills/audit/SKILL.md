@@ -1,14 +1,14 @@
 ---
-name: loop-audit
+name: audit
 description: "Audit an existing implementation against Loop framework principles — anti-pattern checks, structural analysis, and contract alignment. Reads implementation files directly. If loop-workspace design artifacts exist, also reports design-implementation discrepancies. Use on any multi-stage pipeline."
 argument-hint: "[path-or-description]"
 ---
 
 # Loop: Audit Implementation
 
-Check an existing multi-stage pipeline implementation against Loop framework principles and anti-patterns. Unlike `/loop-review` (which checks design artifacts), this skill reads the implementation directly.
+Check an existing multi-stage pipeline implementation against Loop framework principles and anti-patterns. Unlike `/loop:review` (which checks design artifacts), this skill reads the implementation directly.
 
-If `loop-workspace/` design artifacts exist (from `/loop-define` through `/loop-context`, or from `/loop-reverse`), the audit also compares implementation behavior against design intent and reports discrepancies.
+If `loop-workspace/` design artifacts exist (from `/loop:phase-define` through `/loop:phase-context`, or from `/loop:reverse`), the audit also compares implementation behavior against design intent and reports discrepancies.
 
 ## Input
 
@@ -21,7 +21,7 @@ If `loop-workspace/` design artifacts exist (from `/loop-define` through `/loop-
 
 A single file: `loop-workspace/audit.md` — findings from anti-pattern checks, structural analysis, and (if design artifacts exist) design-implementation discrepancies.
 
-This skill does not create design artifacts. To get an implementation into Loop vocabulary first, run `/loop-reverse`.
+This skill does not create design artifacts. To get an implementation into Loop vocabulary first, run `/loop:reverse`.
 
 ## How to Run
 
@@ -221,7 +221,7 @@ Write `loop-workspace/audit.md`:
 - **Anti-pattern**: [Name, if applicable — e.g., Kitchen Sink Stage, Echo Chamber Loop]
 - **Finding**: [What's wrong — reference the actual implementation]
 - **Suggested fix**: [How to address it]
-- **Loop skill**: [Which /loop-* skill's output would guide the fix, if any]
+- **Loop skill**: [Which /loop:* skill's output would guide the fix, if any]
 
 ### [Next issue]
 ...
@@ -248,7 +248,7 @@ Walk the user through issues by severity (errors first). For each, reference the
 
 If discrepancies were found, present them grouped by resolution direction — design updates together, implementation gaps together.
 
-The user or a workflow skill (`/loop-wf-analyze`, `/loop-wf-align`) determines what to run next.
+The user or a workflow skill (`/loop:analyze`, `/loop:align`) determines what to run next.
 
 ## Guidance
 

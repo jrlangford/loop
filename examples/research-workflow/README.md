@@ -4,30 +4,30 @@ This example demonstrates the full Loop framework lifecycle: designing a multi-s
 
 ## How This Was Built
 
-The design was produced through a guided conversation between a designer and `/loop-wf-design`, which orchestrated the phase skills in sequence. Each phase proposed a design, the designer reviewed it, and the phase wrote its artifact only after approval.
+The design was produced through a guided conversation between a designer and `/loop:design`, which orchestrated the phase skills in sequence. Each phase proposed a design, the designer reviewed it, and the phase wrote its artifact only after approval.
 
 ### Step 1: Define the transformation
 
-**Skill:** `/loop-wf-design` triggered `/loop-define`
+**Skill:** `/loop:design` triggered `/loop:phase-define`
 
 The designer described the goal: *"a research validation workflow that launches multiple agents that review claims and then compare their findings, providing feedback to the reviewer."*
 
-`/loop-define` asked clarifying questions about input format, output structure, number of parallel agents, feedback round limits, and external dependencies. The designer specified:
+`/loop:phase-define` asked clarifying questions about input format, output structure, number of parallel agents, feedback round limits, and external dependencies. The designer specified:
 - Markdown documents as input
 - 3 parallel reviewer agents with web search access
 - Agreement gates with up to 3 reconciliation rounds
 - Unresolvable claims explicitly marked rather than forced to consensus
 - No external sinks — the validation report is the final output
 
-After the designer confirmed the answers, `/loop-define` wrote the transformation definition.
+After the designer confirmed the answers, `/loop:phase-define` wrote the transformation definition.
 
 **Produced:** `loop-workspace/transformation.md`
 
 ### Step 2: Decompose into stages
 
-**Skill:** `/loop-decompose`
+**Skill:** `/loop:phase-decompose`
 
-`/loop-decompose` proposed a 6-stage decomposition using the one-verb heuristic, explaining why each stage was separate (e.g., Extract and Classify split because they require different analytical postures) and why certain merges were rejected (e.g., citation checking embedded in Verify rather than split out, to avoid duplicating web lookups). The designer approved.
+`/loop:phase-decompose` proposed a 6-stage decomposition using the one-verb heuristic, explaining why each stage was separate (e.g., Extract and Classify split because they require different analytical postures) and why certain merges were rejected (e.g., citation checking embedded in Verify rather than split out, to avoid duplicating web lookups). The designer approved.
 
 | Stage | Verb | Description |
 |-------|------|-------------|
@@ -42,49 +42,49 @@ After the designer confirmed the answers, `/loop-define` wrote the transformatio
 
 ### Step 3: Specify artifacts
 
-**Skill:** `/loop-artifacts`
+**Skill:** `/loop:phase-artifacts`
 
-`/loop-artifacts` proposed the typed intermediate representations and asked the designer to confirm 5 key design decisions: claim identity fields, separation of observation from judgment in reviewer assessments, enum-based agreement status, reasoning trace policies, and the loopback artifact structure for the reconciliation cycle. The designer approved all 5.
+`/loop:phase-artifacts` proposed the typed intermediate representations and asked the designer to confirm 5 key design decisions: claim identity fields, separation of observation from judgment in reviewer assessments, enum-based agreement status, reasoning trace policies, and the loopback artifact structure for the reconciliation cycle. The designer approved all 5.
 
 **Produced:** `loop-workspace/artifacts.md`
 
 ### Step 4: Budget context
 
-**Skill:** `/loop-context`
+**Skill:** `/loop:phase-context`
 
-`/loop-context` produced per-stage context budgets — what goes in each stage's context window (germane load), what stays out (extraneous), and load assessments. This phase ran without requiring human input beyond approval.
+`/loop:phase-context` produced per-stage context budgets — what goes in each stage's context window (germane load), what stays out (extraneous), and load assessments. This phase ran without requiring human input beyond approval.
 
 **Produced:** `loop-workspace/context-specs.md`
 
 ### Step 5: Place gates
 
-**Skill:** `/loop-gates research-validation`
+**Skill:** `/loop:phase-gates research-validation`
 
-The designer named the workflow "research-validation." `/loop-gates` proposed 5 gates and explained each: why it was needed, what type of check it performed, and what one ungated boundary was deliberately left open (Extract → Classify, because misclassification is low-cost). The designer approved.
+The designer named the workflow "research-validation." `/loop:phase-gates` proposed 5 gates and explained each: why it was needed, what type of check it performed, and what one ungated boundary was deliberately left open (Extract → Classify, because misclassification is low-cost). The designer approved.
 
 **Produced:** `loop-workspace/workflows/research-validation/gates.md`
 
 ### Step 6: Design feedback loops
 
-**Skill:** `/loop-feedback research-validation`
+**Skill:** `/loop:phase-feedback research-validation`
 
-`/loop-feedback` identified 4 feedback loops — 1 primary consensus loop (Compare ⇄ Reconcile) and 3 gate-retry balancing loops — with termination conditions, degradation detectors, and anti-pattern risk assessments for each. The designer approved.
+`/loop:phase-feedback` identified 4 feedback loops — 1 primary consensus loop (Compare ⇄ Reconcile) and 3 gate-retry balancing loops — with termination conditions, degradation detectors, and anti-pattern risk assessments for each. The designer approved.
 
 **Produced:** `loop-workspace/workflows/research-validation/loops.md`
 
 ### Step 7: Review
 
-**Skill:** `/loop-review`
+**Skill:** `/loop:review`
 
-`/loop-review` checked the complete design against all 8 anti-patterns. Result: 0 errors, 0 warnings, 3 info items. One info item flagged the missing preconditions for web search. The designer agreed to add preconditions, and `/loop-wf-design` wrote the preconditions file.
+`/loop:review` checked the complete design against all 8 anti-patterns. Result: 0 errors, 0 warnings, 3 info items. One info item flagged the missing preconditions for web search. The designer agreed to add preconditions, and `/loop:design` wrote the preconditions file.
 
 **Produced:** `loop-workspace/workflows/research-validation/review.md`, `loop-workspace/workflows/research-validation/preconditions.md`
 
 ### Step 8: Implement
 
-**Skill:** `/loop-implement`
+**Skill:** `/loop:implement`
 
-The designer invoked `/loop-implement`. It proposed the prefix "claim-val" — the designer overrode this to "research-validation" to match the workflow name. `/loop-implement` then generated:
+The designer invoked `/loop:implement`. It proposed the prefix "claim-val" — the designer overrode this to "research-validation" to match the workflow name. `/loop:implement` then generated:
 
 - **Shared resources** (`skills/research-validation/`) — 6 stage instruction files and 8 artifact contract files
 - **Orchestrator skill** (`skills/research-validation-run/SKILL.md`) — the single entry point that sequences stages via subagents, enforces gates, and manages the consensus feedback loop
@@ -110,7 +110,7 @@ research-workflow/
 │           ├── preconditions.md                  #   Pre-run checks (web search availability)
 │           └── review.md                         #   Design review — passed all anti-pattern checks
 │
-├── skills/                                       # Implemented Claude Code skills (produced by /loop-implement)
+├── skills/                                       # Implemented Claude Code skills (produced by /loop:implement)
 │   ├── research-validation/                      #   Shared resources (stages + contracts)
 │   │   ├── stages/                               #   Per-stage prompt instructions
 │   │   │   ├── extract-claims.md

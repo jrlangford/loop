@@ -1,6 +1,6 @@
 ---
-name: loop-decompose
-description: "Break a transformation into pipeline stages using the one-verb heuristic. Identifies transformation boundaries and information rate limits. Use after /loop-define has produced a transformation definition."
+name: phase-decompose
+description: "Break a transformation into pipeline stages using the one-verb heuristic. Identifies transformation boundaries and information rate limits. Use after /loop:phase-define has produced a transformation definition."
 argument-hint: "[transformation-file]"
 ---
 
@@ -10,7 +10,7 @@ Break a transformation definition into ordered pipeline stages, each performing 
 
 ## Input
 
-Read `loop-workspace/transformation.md` (or the file provided as `$ARGUMENTS`). If it doesn't exist, tell the user to run `/loop-define` first.
+Read `loop-workspace/transformation.md` (or the file provided as `$ARGUMENTS`). If it doesn't exist, tell the user to run `/loop:phase-define` first.
 
 ## What You Produce
 
@@ -122,11 +122,11 @@ Write `loop-workspace/stages.md`:
 
 ### Step 6: Summarise
 
-Present the stage list. The user or a workflow skill (`/loop-wf-design`) determines what to run next.
+Present the stage list. The user or a workflow skill (`/loop:design`) determines what to run next.
 
 ## Guidance
 
-- **Don't design artifacts yet.** Note inputs/outputs at a high level, but detailed artifact specs are `/loop-artifacts`'s job.
-- **Don't place gates yet.** If you notice a natural validation point, note it in complexity, but gate placement is `/loop-gates`'s job.
-- **Don't design loops yet.** If the user describes iterative refinement, note it as a complexity signal, but loop design is `/loop-feedback`'s job.
+- **Don't design artifacts yet.** Note inputs/outputs at a high level, but detailed artifact specs are `/loop:phase-artifacts`'s job.
+- **Don't place gates yet.** If you notice a natural validation point, note it in complexity, but gate placement is `/loop:phase-gates`'s job.
+- **Don't design loops yet.** If the user describes iterative refinement, note it as a complexity signal, but loop design is `/loop:phase-feedback`'s job.
 - **Parallel sub-tasks are still stages.** If the transformation definition flags parallelisation opportunities, model them as stages that happen to share the same input. The design just shows they're independent.
