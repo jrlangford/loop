@@ -1,6 +1,6 @@
 {
   "name": "loop",
-  "description": "Design framework for structuring LLM pipelines with staged transformations, explicit feedback loops, channel capacity budgets, and anti-pattern detection",
+  "description": "Design complete, internally consistent LLM pipeline specifications with configurable human interaction and graph-aware cascade detection for edits.",
   "version": "1.0.0",
   "author": {
     "name": "Jonathan Langford"
@@ -8,8 +8,9 @@
   "repository": "https://github.com/jrlangford/loop",
   "license": "MIT",
   "keywords": [
+    "loop-pipeline",
+    "pipeline-design",
     "llm",
-    "pipeline",
     "design-framework",
     "feedback-loops",
     "prompt-engineering",

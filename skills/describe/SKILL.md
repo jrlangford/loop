@@ -49,14 +49,14 @@ Construct a mermaid flowchart showing the pipeline's stage-to-stage data flow.
 **Diagram conventions:**
 - Flow direction: top to bottom (`TD`)
 - Stage nodes: rounded rectangles (default)
-- Gate nodes: diamonds `{Gate Name}` — use short, single-line labels only (diamond nodes do not support multi-line text or markdown)
+- Gate nodes: diamonds `{Gate Name}` — use short, single-line labels only
 - Source nodes: stadium shape `([Source Name])`
 - Sink nodes: stadium shape `([Sink Name])`
 - Feedback back-edges: dotted lines with `-.->` notation
 - Use `classDef` to visually distinguish sources (blue), sinks (orange), and gates (yellow)
-- **No HTML tags** in node labels — mermaid flowcharts do not support `<i>`, `<b>`, `<br>`, etc.
-- **No `\n` in labels** — multi-line text inside node labels and edge labels triggers "Unsupported markdown" errors in mermaid renderers. Keep all labels single-line. If a label needs detail, shorten it for the diagram and explain in the text sections below.
-- **No markdown-like patterns in labels** — numbered prefixes like `"1. Extract"` are parsed as ordered list syntax, causing "Unsupported markdown: list" errors. Use `"S1 Extract"` instead of `"1. Extract"`.
+- **No HTML tags** in node labels — mermaid flowcharts do not support them
+- **No `\n` in labels** — multi-line text triggers rendering errors. Keep all labels single-line.
+- **No markdown-like patterns in labels** — numbered prefixes like `"1. Extract"` parse as list syntax. Use `"S1 Extract"` instead.
 
 Example structure (adapt to actual pipeline):
 
@@ -79,7 +79,7 @@ flowchart TD
 ```
 ````
 
-Keep the diagram readable. For pipelines with more than 8 stages, consider splitting into sub-diagrams by phase or grouping with mermaid subgraphs.
+Keep the diagram readable. For pipelines with more than 8 stages, consider splitting into sub-diagrams or grouping with mermaid subgraphs.
 
 ### Step 3: Build the feedback loop diagram (if loops exist)
 
@@ -89,11 +89,9 @@ If `loops.md` exists and the pipeline has non-trivial feedback loops (more than 
 - Label each loop with: type (Reinforcing/Balancing), termination condition, hard cap, and degradation detector
 - Show the feedback payload (what information travels back)
 
-This diagram complements the flow diagram — the flow diagram shows the full pipeline with loops as back-edges; this diagram zooms in on loop mechanics.
-
 ### Step 4: Write the design document
 
-Assemble the markdown document with these sections. Include only sections for which artifact data exists — don't write empty sections.
+Assemble the markdown document with these sections. Include only sections for which artifact data exists.
 
 ```markdown
 # Pipeline Design: [Task statement from transformation.md]
@@ -169,8 +167,8 @@ Tell the user where the file was written. Note any sections that were thin due t
 
 ## Guidance
 
-- **Describe, don't prescribe.** This document reflects the current design. Don't suggest improvements — that's `/loop:review`'s job. If you notice issues, mention them briefly but don't derail the description.
-- **Diagrams over prose.** Prefer the mermaid diagram to carry the structural story. The text sections add detail the diagram can't show (context budgets, artifact field types, termination conditions).
-- **Keep it current.** This document is a snapshot. If the design changes, re-run `/loop:describe` to regenerate. Don't manually edit `design.md` — it's a derived artifact.
-- **Readable by non-designers.** Someone unfamiliar with the Loop framework should be able to read this document and understand what the pipeline does, how data flows, where validation happens, and what can go wrong. Avoid framework jargon without brief explanation.
-- **Diagram size limits.** Mermaid diagrams become unreadable past ~15 nodes. For large pipelines, use subgraphs to group related stages, or split into multiple diagrams (e.g., one per workflow phase). Prefer clarity over completeness.
+- **Describe, don't prescribe.** This document reflects the current design. Don't suggest improvements — that's `/loop:audit-design`'s job.
+- **Diagrams over prose.** Prefer the mermaid diagram to carry the structural story. The text sections add detail the diagram can't show.
+- **Keep it current.** This document is a snapshot. If the design changes, re-run `/loop:describe` to regenerate.
+- **Readable by non-designers.** Someone unfamiliar with Loop should understand what the pipeline does, how data flows, where validation happens, and what can go wrong.
+- **Diagram size limits.** Mermaid diagrams become unreadable past ~15 nodes. For large pipelines, use subgraphs or split into multiple diagrams.
