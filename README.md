@@ -2,7 +2,7 @@
 
 How do we collaborate effectively with AI?
 
-Some work follows a process, while other work requires free engagement with the subject. For the former, effective work with LLMs requires explicit workflow design — one that identifies what can be delegated to the LLM and what requires human judgement.
+Some work requires structured engagement, while other work benefits from free exploration. For the former, effective collaboration with LLMs requires explicit workflow design — one that identifies what can be delegated to the LLM and what requires human judgement.
 
 Loop is a design framework for structuring LLM work as pipelines: sequences of focused stages connected by explicit feedback loops, with human review at critical quality gates. It's delivered as a set of Claude Code skills that guide you through pipeline design interactively and can translate finished designs into implementable Claude skills.
 
@@ -53,14 +53,14 @@ The design workflow is conversational and will fill your context window. Clear c
 /loop:implement my-pipeline
 ```
 
-This reads `loop-workspace/` and generates a Claude Code plugin — a `my-pipeline/` directory containing stage instructions, artifact contracts, and orchestrator skills that wire everything together.
+This reads `loop-workspace/` and generates a Claude Code plugin at your project root — `.claude-plugin/plugin.json`, stage instructions, artifact contracts, and orchestrator skills that wire everything together.
 
 ### 4. Test the plugin
 
 Load the generated plugin locally:
 
 ```sh
-claude --plugin-dir ./my-pipeline
+claude --plugin-dir .
 ```
 
 Your pipeline is now available as `/my-pipeline:run`. To share it, you can [publish it to a marketplace](https://code.claude.com/docs/en/plugin-marketplaces).
@@ -69,36 +69,27 @@ Your pipeline is now available as `/my-pipeline:run`. To share it, you can [publ
 
 For most workflows, `/loop:design` and `/loop:implement` are all you need. The remaining skills are available for more specific use cases.
 
-### General-purpose tools
+### Design and build
 
 | Skill | Purpose |
 |-------|---------|
-| `/loop:design` | Guided end-to-end pipeline design: define → decompose → artifacts → context → gates → feedback → review |
+| `/loop:design` | Full design pipeline: define → decompose → artifacts → context → gates → feedback → review |
 | `/loop:implement` | Generate a Claude Code plugin from design artifacts |
-| `/loop:review` | Check a design for anti-patterns |
-| `/loop:describe` | Generate a readable summary with diagrams from design artifacts |
+| `/loop:edit` | Edit an existing design — maps staleness, selectively re-executes affected stages |
+| `/loop:describe` | Generate a readable summary with mermaid diagrams from design artifacts |
+
+### Review and audit
+
+| Skill | Purpose |
+|-------|---------|
+| `/loop:audit-design` | Check a design for anti-patterns, missing gates, unbounded loops, and context issues |
+| `/loop:audit-implementation` | Audit an implementation against Loop principles; reports design-implementation drift if design artifacts exist |
 
 ### Working with existing pipelines
 
 | Skill | Purpose |
 |-------|---------|
-| `/loop:analyze` | Reverse-engineer an existing implementation, review it, and audit it |
-| `/loop:align` | Check for drift between design and implementation |
-| `/loop:reverse` | Reverse-engineer an implementation into Loop vocabulary |
-| `/loop:audit` | Audit an implementation against Loop principles |
-
-### Phase skills
-
-For manually designing step by step or modifying an existing design, each phase skill produces one artifact:
-
-| Skill | Purpose |
-|-------|---------|
-| `/loop:phase-define` | Define the transformation: input, output, gap, complexity signals |
-| `/loop:phase-decompose` | Break into stages using the one-verb heuristic |
-| `/loop:phase-artifacts` | Specify inter-stage data contracts |
-| `/loop:phase-context` | Budget channel capacity per stage |
-| `/loop:phase-gates` | Place validation checkpoints (workflow-scoped) |
-| `/loop:phase-feedback` | Design feedback loops (workflow-scoped) |
+| `/loop:reverse` | Reverse-engineer an existing implementation into Loop design artifacts, then redesign and implement as a clean plugin |
 
 ## Workspace Structure
 
@@ -121,7 +112,7 @@ loop-workspace/
 
 ## Anti-Patterns
 
-The framework defines seven anti-patterns that the review and audit skills check for:
+The framework defines eight anti-patterns that the audit skills check for:
 
 1. **Kitchen Sink Stage** — A stage doing too many things
 2. **Echo Chamber Loop** — Reinforcing loop without novelty detection
@@ -130,6 +121,7 @@ The framework defines seven anti-patterns that the review and audit skills check
 5. **Hardcoded Chain** — Stages coupled to a fixed sequence
 6. **Ouroboros** — Unintentional circular dependencies
 7. **Telephone Game** — Cumulative interpretation drift across stages
+8. **Fire-and-Forget Emit** — External write without idempotency, pre-write gate, or tight loop caps
 
 ## Documentation
 

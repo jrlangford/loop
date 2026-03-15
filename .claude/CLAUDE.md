@@ -8,15 +8,7 @@ Loop is a design framework (not a runtime framework — no scheduler, no orchest
 
 ## Commands
 
-Requires [just](https://github.com/casey/just).
-
-```sh
-just install    # Symlink all skills to ~/.claude/skills/
-just uninstall  # Remove symlinks
-just status     # Show which skills are installed
-```
-
-No build, lint, or test commands — this is a pure documentation/skills project.
+No build, lint, or test commands — this is a pure documentation/skills project. Install via the plugin marketplace (see README.md).
 
 ## Two-Level Architecture
 
@@ -30,11 +22,13 @@ Changes to the framework should flow into skills where relevant. Changes to skil
 
 ### Skill Categories
 
-**Workflow entrypoints** (orchestrate phase skills): `design` (greenfield), `analyze` (existing code), `align` (drift check)
+**Design and build**: `design` (full pipeline design), `implement` (generate plugin from design), `edit` (modify existing design with staleness tracking), `describe` (readable summary with diagrams)
 
-**Phase skills** (each produces one artifact): `phase-define`, `phase-decompose`, `phase-artifacts`, `phase-context`, `phase-gates`, `phase-feedback`
+**Review and audit**: `audit-design` (check design for anti-patterns), `audit-implementation` (check implementation against principles)
 
-**Standalone skills**: `review` (check design artifacts), `reverse` (reverse-engineer implementation), `audit` (check implementation against principles), `implement` (generate Claude Code skills from design), `describe` (generate readable markdown with mermaid diagrams)
+**Working with existing pipelines**: `reverse` (reverse-engineer implementation into Loop design, then redesign and implement)
+
+**Shared resources** (not skills — no SKILL.md): `loop/` contains stage instructions, artifact contracts, and vocabulary used by the orchestrator skills above
 
 ### Pipeline Two-Level Split
 
@@ -42,7 +36,7 @@ Stages, artifacts, and context-specs are **reusable and workflow-independent**. 
 
 ## Skill Self-Containment
 
-Skills in `skills/` are installed into other projects via symlinks. They execute in directories that have **no access** to the framework documentation.
+Skills in `skills/` are distributed as a Claude Code plugin. When installed, they are copied to a cache directory and execute in projects that have **no access** to the framework documentation.
 
 **Rules:**
 - Skills must be fully self-contained. A skill must work correctly when the only file available is its own `SKILL.md`.
