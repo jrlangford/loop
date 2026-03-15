@@ -1,149 +1,124 @@
 ---
-description: "Workflow: reverse-engineer an existing pipeline into Loop design artifacts, validate the design, generate a clean plugin, audit it, and fix issues. Use on any multi-stage pipeline to rebuild it with proper structure."
+description: "Workflow: extract a rich pipeline description from an existing implementation, then run it through the design and implement pipeline to produce a clean Loop plugin. Use on any multi-stage pipeline to rebuild it properly."
 argument-hint: "[path-or-description]"
 ---
 
 # Loop: Reverse-Engineer and Rebuild
 
-Take an existing multi-stage pipeline implementation and rebuild it as a properly structured Loop plugin. Reverse-engineers the implementation into design artifacts, validates the design, generates a clean plugin, audits the result, and fixes issues.
+Take an existing multi-stage pipeline implementation, extract a rich transformation description in Loop vocabulary, then feed it through the standard design and implementation pipeline to produce a clean, properly structured Loop plugin.
 
 ## Workflow Sequence
 
 ```
-Reverse-engineer → Audit design → Fix design issues → Implement → Audit implementation → Fix implementation issues
+Extract description → /loop:design → /loop:implement → /loop:audit-implementation → Fix issues
 ```
 
 ## How to Run
 
-### Step 1: Check workspace state
-
-Look for `loop-workspace/` in the current project directory.
-
-- **No workspace**: Start from Step 2
-- **Workspace exists with design artifacts**: Previous reverse-engineering may be done. Present what exists and ask the user whether to resume from the next incomplete step or start fresh.
-- **Workspace exists with `audit.md` or generated plugin**: Later steps may be complete. Present current state and offer resumption.
-
-### Step 2: Reverse-engineer the implementation
+### Step 1: Identify the implementation
 
 `$ARGUMENTS` should identify the implementation. Accepts:
 - A directory path (e.g., `skills/` or `src/pipeline/`)
 - A description of what to reverse-engineer (e.g., "the DDD skills in this project")
 - Nothing — ask the user what to analyze
 
-Read `loop/vocabulary.md` for the full definitions of stages, artifacts, gates, loops, sources, sinks, and stage classification. These definitions guide what to look for.
+### Step 2: Extract the transformation description
 
-Read implementation files to understand the pipeline structure. Look for:
-- **Stage boundaries** — where one unit of work ends and another begins
-- **Artifacts** — what data passes between stages (files, messages, structured objects)
-- **Control flow** — what triggers each stage, what order they run
-- **Validation** — any checks, gates, or quality assurance between stages
-- **Feedback paths** — retries, revision loops, re-runs
-- **Context management** — what each stage reads, what it ignores
-- **Context isolation** — whether each stage runs in a fresh context (subagent) or shares context with other stages. Also check whether semantic gates run in dedicated clean contexts.
-- **External writes** — what data each stage pushes to external systems. These are sinks.
+Read `loop/vocabulary.md` for the full definitions of stages, artifacts, gates, loops, sources, sinks, and stage classification. Use these definitions to map what you find in the implementation to Loop concepts.
 
-Adapt discovery to the implementation type:
-- **Claude Code plugin (Loop structure)**: Look for `.claude-plugin/plugin.json`. Inside, look for `skills/<prefix>/` containing `stages/` and `contracts/`.
-- **Claude Code skills (shared resource structure, no plugin)**: Look for a `<prefix>/` directory containing `stages/` and `contracts/` without plugin packaging.
-- **Claude Code skills (one skill per stage)**: Each stage is an independent skill with its own `SKILL.md`. Flag schema duplication in synthesis notes.
+Read the implementation files thoroughly. Adapt to the implementation type:
+- **Claude Code plugin**: Look for `.claude-plugin/plugin.json`, `skills/<prefix>/stages/`, `skills/<prefix>/contracts/`, orchestrator skills.
+- **Claude Code skills (one per stage)**: Each stage is an independent skill with its own `SKILL.md`.
 - **Scripts/code**: Read orchestration logic, function signatures, data flow.
 - **Mixed**: Read both skill definitions and code.
 
 Use subagents for parallel discovery when the implementation has many files.
 
-Write design artifacts to `loop-workspace/` in this order:
+Produce a rich transformation description that captures everything `/loop:design` needs to produce proper artifacts without losing valuable elements from the source. The description must cover:
 
-**`transformation.md`** — Derive from the implementation's overall purpose:
-- Input: what the pipeline receives (first stage's input)
-- Output: what the pipeline produces (last stage's output)
-- Gap: what transformations bridge input to output
-- Complexity signals: what the implementation reveals about difficulty
+**Overall transformation:**
+- What the pipeline takes as input (format, variability)
+- What it produces as output (format, quality criteria)
+- The gap between input and output — what work bridges them
 
-**`stages.md`** — One stage per meaningful unit of work:
-- Map each implementation unit to a stage
-- Apply the one-verb heuristic: flag stages whose implementation does multiple things
-- Note the stage category (Extract, Enrich, Transform, Evaluate, Synthesise, Refine, Emit)
-- Identify source and sink dependencies
-- Classify each stage: pure, enriched, emitting, or enriched emitting
+**Stages discovered** (mapped to Loop vocabulary):
+- Each stage's intent, mapped to a Loop category (Extract, Enrich, Transform, Evaluate, Synthesise, Refine, Emit)
+- What each stage actually does — the transformation logic, not just a label
+- Dependencies between stages — what feeds what
+- Stages that violate the one-verb heuristic (flag, but still capture what they do)
 
-**`artifacts.md`** — One artifact per stage boundary:
-- Document what actually passes between stages
-- Note fields using enums/closed vocabularies versus free text
-- Identify candidate identity fields
-- Flag fields mixing observation and judgment
+**Sources and sinks:**
+- External resources stages read from (web, APIs, MCP servers, databases, filesystem)
+- External targets stages write to (APIs, git, Slack, databases, notification services)
+- How the implementation handles source unavailability
+- Idempotency strategies for sinks (if any)
 
-**`context-specs.md`** — One spec per stage:
-- Document what each stage actually loads into context
-- Note the history policy (explicit or implied)
-- Document the isolation model: subagent delegation vs shared context
+**Artifacts between stages:**
+- What data passes between stages (structure, key fields)
+- Which fields use enums/closed vocabularies vs free text
+- Which fields carry source references vs paraphrased interpretations
+- Identity fields that pass through unchanged
 
-**`workflows/<name>/gates.md`** — One gate per validation checkpoint found.
+**Validation and feedback:**
+- Gates or checks between stages (type, criteria, what happens on failure)
+- Retry or revision loops (what triggers them, what gets fed back, iteration bounds)
+- Human review points
+- Missing validation — boundaries with no checks
 
-**`workflows/<name>/loops.md`** — One loop per feedback path.
+**Context management:**
+- What each stage loads into context
+- Whether stages run in isolated contexts (subagents) or share context
+- Whether semantic gates run in clean contexts
+- History policy (explicit or implied)
 
-For each artifact, add `<!-- Synthesis note: ... -->` comments where interpretation was needed.
+**Domain constraints and complexity signals:**
+- Error reinforcement risks
+- Variable input sizes
+- External dependency reliability concerns
+- Anything that makes this pipeline harder than a simple linear chain
 
-Present what was reverse-engineered: stage count, artifact count, loops found, flags raised.
+Write this description to `loop-workspace/extraction.md`. This file serves as the input to `/loop:design` in the next step.
 
-### Step 3: Audit the design (shift-left)
+Present the extraction to the user. Flag where interpretation was needed with `<!-- Synthesis note: ... -->` comments. Ask the user to review and correct before proceeding — errors here propagate through the entire design.
 
-Run `/loop:audit-design` against the `loop-workspace/` artifacts produced in Step 2.
+### Step 3: Run the design pipeline
 
-This catches design-level problems early — Kitchen Sink stages faithfully reverse-engineered from the original, missing gates, unbounded loops, Telephone Game drift. Fixing these in the design is cheaper than fixing them after implementation.
+Run `/loop:design` with the extracted description from `loop-workspace/extraction.md` as the task description input.
 
-Present findings to the user. Group by severity (errors first).
+The design pipeline will produce proper artifacts — potentially restructuring stages, adding missing gates, designing feedback loops with proper termination conditions. It is not constrained to mirror the original implementation's structure; it designs from the transformation intent.
 
-### Step 4: Fix design issues
+### Step 4: Implement
 
-For each ERROR and WARNING from the audit:
-- Identify which design artifact needs updating
-- Apply the fix to the appropriate `loop-workspace/` file
-- For structural issues (Kitchen Sink, Hardcoded Chain): update `stages.md` and cascade to `artifacts.md`, `context-specs.md`
-- For loop/gate issues: update the relevant `workflows/<name>/` files
-- For drift issues (Telephone Game): update `artifacts.md` to add identity fields, closed vocabularies, source references
+Run `/loop:implement` to generate a clean Loop plugin from the design artifacts.
 
-After fixes, re-run `/loop:audit-design` to verify. Max 2 audit-fix cycles. If issues persist after 2 cycles, present remaining issues and ask the user whether to proceed to implementation or continue fixing.
-
-### Step 5: Implement
-
-Run `/loop:implement` to generate a clean Loop plugin from the validated design artifacts.
-
-If `$ARGUMENTS` included a prefix or the original implementation suggests one, pass it to implement. Otherwise, let implement derive it from `transformation.md`.
-
-After implementation completes, present the generated plugin structure.
-
-### Step 6: Audit the implementation
+### Step 5: Audit the implementation
 
 Run `/loop:audit-implementation` against the generated plugin directory.
 
-This verifies that the generated plugin correctly reflects the design — contract alignment, context isolation, gate coverage, sink safety.
-
 Present findings to the user.
 
-### Step 7: Fix implementation issues
+### Step 6: Fix issues
 
 For each ERROR and WARNING from the audit:
-- Determine whether the fix belongs in the generated plugin or back in the design artifacts
 - **Implementation fixes**: edit the generated skill files directly
-- **Design fixes**: update `loop-workspace/` artifacts and re-run `/loop:implement` for the affected files
+- **Design fixes**: update `loop-workspace/` artifacts and re-run `/loop:implement` for affected files
 
 After fixes, re-run `/loop:audit-implementation` to verify. Max 2 audit-fix cycles.
 
-### Step 8: Present results
+### Step 7: Present results
 
 Summarise the rebuild:
 - Original implementation: what was analyzed (file count, type)
-- Design artifacts: stage count, artifact count, workflow count
-- Design audit: issues found and fixed
+- Key elements preserved from the original (stages, sources, sinks, domain logic)
+- Elements restructured by the design pipeline (merged stages, added gates, new feedback loops)
 - Generated plugin: file count, invocation format (`/<prefix>:run`)
-- Implementation audit: issues found and fixed
-- Any remaining warnings the user should be aware of
+- Audit results: issues found and fixed
+- Any remaining warnings
 
 ## Guidance
 
-- **Describe what is, not what should be** — during reverse-engineering (Step 2). Capture the original implementation faithfully. Improvements happen in Steps 4 and 7.
-- **Flag the synthesis gap.** When the implementation doesn't map cleanly to Loop concepts, say so in synthesis notes. Don't force the fit.
-- **Implementation units are not always stages.** A helper function called by three stages isn't a stage. A config file read by every stage isn't an artifact. Use judgment.
-- **Shift-left.** Design audit (Step 3) is cheap. Fix problems there before spending inference budget on implementation.
-- **Don't over-fix.** The goal is a working, properly structured plugin — not a perfect one. Address errors and clear warnings. Leave minor style issues for later iteration.
+- **The extraction is the critical step.** Capture everything valuable from the original implementation — domain logic, external dependencies, validation criteria, complexity constraints. What the extraction misses, the design pipeline can't recover.
+- **Map to vocabulary, don't just summarize.** "This skill calls an API" is a summary. "This stage is an Enriched Extract with a web API source, producing a structured entity list with closed-vocabulary classification fields" is a vocabulary mapping.
+- **Flag interpretation.** When the implementation is ambiguous (is this one stage or two? is this a gate or just an if-statement?), use synthesis notes so the user can correct.
+- **The design pipeline may restructure.** The original implementation might have Kitchen Sink stages, missing gates, or no feedback loops. The design pipeline will fix these. This is a feature — the point is to produce a properly structured pipeline, not to replicate the original's flaws.
 - **Preserve the original.** This workflow generates a new plugin alongside the original implementation. It does not modify the original.
