@@ -7,6 +7,15 @@ interaction: plan
 
 Orchestrate the complete design pipeline. Take a task description and produce a full Loop pipeline design by sequencing stages 1-7, enforcing gates, managing feedback loops, and handling failures. Each stage runs in an isolated subagent. The orchestrator's job is sequencing, gate checking, loop management, and progress reporting.
 
+## Subagent Types
+
+This skill uses two custom agents distributed with the Loop plugin:
+
+- **`loop:stage-runner`** — Executes pipeline stages in isolated context. Has Read, Write, Edit, Glob, Grep tools. Use for all stage delegations (Phases 1–7).
+- **`loop:gate-checker`** — Evaluates semantic gates in clean context. Has Read, Glob, Grep tools (read-only). Use for all semantic gate checks.
+
+When delegating to a subagent, always specify the `subagent_type` parameter in the Agent tool call.
+
 ## Pipeline Overview
 
 ```
@@ -67,7 +76,7 @@ Maintain these counters across the pipeline run:
 
 ### Phase 1: Define Transformation
 
-Delegate to a subagent with this prompt:
+Delegate to the `loop:stage-runner` subagent (Agent tool, `subagent_type: "loop:stage-runner"`) with this prompt:
 
 > Read the stage file at `loop/stages/define-transformation.md`. Read the output contract at `loop/contracts/transformation-definition.md`. The task description is: [task description]. The interaction level is: [level]. Write the output artifact to `loop-workspace/transformation.md`.
 
@@ -102,7 +111,7 @@ Human gate (at `minimal` or `per-stage`): trigger when the task description was 
 
 ### Phase 2: Decompose Stages
 
-Delegate to a subagent:
+Delegate to the `loop:stage-runner` subagent (Agent tool, `subagent_type: "loop:stage-runner"`):
 
 > Read the stage file at `loop/stages/decompose-stages.md`. Read the input contract at `loop/contracts/transformation-definition.md` and the output contract at `loop/contracts/stage-decomposition.md`. Read the input artifact from `loop-workspace/transformation.md`. Write the output artifact to `loop-workspace/stages.md`.
 
@@ -122,7 +131,7 @@ Metric checks (run inline):
 - [ ] Stage count is between 2 and 15
 - [ ] Every stage intent is a single verb phrase (no conjunctions — no "and", "then", semicolons)
 
-Semantic check (delegate to a dedicated subagent with clean context):
+Semantic check (delegate to the `loop:gate-checker` subagent — Agent tool, `subagent_type: "loop:gate-checker"`):
 
 > You are a design reviewer. Read `loop-workspace/stages.md`. Check for: (1) Kitchen Sink — any stage whose intent has conjunctions, whose complexity notes exceed 3 sentences, or that requires multiple distinct cognitive operations. (2) Ordering — stages follow narrow-before-wide, fail-fast, cheap-before-expensive, emit-last principles. (3) Gap coverage — every difficulty in `loop-workspace/transformation.md`'s gap analysis maps to at least one stage. Report violations with specific stage names and reasons.
 
@@ -137,7 +146,7 @@ Semantic check (delegate to a dedicated subagent with clean context):
 
 ### Phase 3: Specify Artifacts
 
-Delegate to a subagent:
+Delegate to the `loop:stage-runner` subagent (Agent tool, `subagent_type: "loop:stage-runner"`):
 
 > Read the stage file at `loop/stages/specify-artifacts.md`. Read the input contract at `loop/contracts/stage-decomposition.md` and the output contract at `loop/contracts/artifact-specifications.md`. Read the input artifact from `loop-workspace/stages.md`. Write the output artifact to `loop-workspace/artifacts.md`.
 
@@ -166,7 +175,7 @@ Identity checks (run inline):
 
 **Gate 4: Re-grounding** (runs only after Gate 3 passes)
 
-Semantic check (delegate to a dedicated subagent with clean context):
+Semantic check (delegate to the `loop:gate-checker` subagent — Agent tool, `subagent_type: "loop:gate-checker"`):
 
 > You are a re-grounding reviewer. Read `loop-workspace/transformation.md` and `loop-workspace/artifacts.md`. Check whether the artifact chain faithfully represents the transformation definition. Look for structural drift (stages don't match the transformation's intent) and contractual drift (artifact contracts don't capture what the transformation requires). Report whether drift is structural or contractual with specific evidence.
 
@@ -187,7 +196,7 @@ Run these two phases in parallel. They share the same inputs (`loop-workspace/st
 
 #### Phase 4: Budget Context
 
-Delegate to a subagent:
+Delegate to the `loop:stage-runner` subagent (Agent tool, `subagent_type: "loop:stage-runner"`):
 
 > Read the stage file at `loop/stages/budget-context.md`. Read the input contracts at `loop/contracts/stage-decomposition.md` and `loop/contracts/artifact-specifications.md`. Read the output contract at `loop/contracts/context-specifications.md`. Read the input artifacts from `loop-workspace/stages.md` and `loop-workspace/artifacts.md`. Write the output artifact to `loop-workspace/context-specs.md`.
 
@@ -199,7 +208,7 @@ At `per-stage` interaction: present context specifications to the user.
 
 #### Phase 5: Place Gates
 
-Delegate to a subagent:
+Delegate to the `loop:stage-runner` subagent (Agent tool, `subagent_type: "loop:stage-runner"`):
 
 > Read the stage file at `loop/stages/place-gates.md`. Read the input contracts at `loop/contracts/stage-decomposition.md` and `loop/contracts/artifact-specifications.md`. Read the output contract at `loop/contracts/gate-specifications.md`. Read the input artifacts from `loop-workspace/stages.md` and `loop-workspace/artifacts.md`. The interaction level is: [level]. The workflow name is: [workflow-name]. Write the output artifact to `loop-workspace/workflows/<workflow-name>/gates.md`.
 
@@ -233,7 +242,7 @@ Wait for both Phase 4 and Phase 5 (including Gate 5) to complete before proceedi
 
 ### Phase 6: Design Feedback
 
-Delegate to a subagent:
+Delegate to the `loop:stage-runner` subagent (Agent tool, `subagent_type: "loop:stage-runner"`):
 
 > Read the stage file at `loop/stages/design-feedback.md`. Read the input contracts at `loop/contracts/stage-decomposition.md`, `loop/contracts/artifact-specifications.md`, and `loop/contracts/gate-specifications.md`. Read the output contract at `loop/contracts/loop-specifications.md`. Read the input artifacts from `loop-workspace/stages.md`, `loop-workspace/artifacts.md`, and `loop-workspace/workflows/<workflow-name>/gates.md`. The workflow name is: [workflow-name]. Write the output artifact to `loop-workspace/workflows/<workflow-name>/loops.md`.
 
@@ -247,7 +256,7 @@ At `per-stage` interaction: present loop specifications to the user.
 
 ### Phase 7: Review Design
 
-Delegate to a subagent:
+Delegate to the `loop:stage-runner` subagent (Agent tool, `subagent_type: "loop:stage-runner"`):
 
 > Read the stage file at `loop/stages/review-design.md`. Read the output contract at `loop/contracts/review-results.md`. Read all workspace artifacts: `loop-workspace/transformation.md`, `loop-workspace/stages.md`, `loop-workspace/artifacts.md`, `loop-workspace/context-specs.md`, `loop-workspace/workflows/<workflow-name>/gates.md`, `loop-workspace/workflows/<workflow-name>/loops.md`. The workflow name is: [workflow-name]. Write the review to `loop-workspace/workflows/<workflow-name>/review.md`.
 
@@ -292,7 +301,7 @@ After the review correction loop completes (or on PASS/PASS_WITH_WARNINGS), the 
 
 ### Cross-Workflow Consistency (conditional)
 
-If there are multiple workflows in `loop-workspace/workflows/`, run a cross-workflow consistency check after all per-workflow reviews pass. Delegate to a subagent:
+If there are multiple workflows in `loop-workspace/workflows/`, run a cross-workflow consistency check after all per-workflow reviews pass. Delegate to the `loop:gate-checker` subagent (Agent tool, `subagent_type: "loop:gate-checker"`):
 
 > Read the stage file at `loop/stages/review-design.md`. Read the output contract at `loop/contracts/review-results.md`. Read all workspace artifacts: `loop-workspace/transformation.md`, `loop-workspace/stages.md`, `loop-workspace/artifacts.md`, `loop-workspace/context-specs.md`. For each workflow directory in `loop-workspace/workflows/`, read gates.md, loops.md, and review.md. Write the cross-workflow review to `loop-workspace/review.md`. Focus on: conflicting gate criteria across workflows, inconsistent loop caps, shared stages with incompatible context specs.
 
@@ -335,9 +344,9 @@ After the pipeline completes, report:
 
 ## Guidance
 
-- Delegate each stage to a subagent for context isolation. The subagent sees only the stage file, relevant contracts, and input artifacts — not the orchestrator's reasoning or prior stages' reasoning.
-- Run semantic gates in dedicated subagents with clean context. Do not evaluate a stage's output in the same context that produced it.
-- Gates are checkpoints, not bottlenecks. Run schema and identity checks inline. Reserve subagent delegation for semantic checks only.
+- Delegate each stage to the `loop:stage-runner` subagent for context isolation. The subagent sees only the stage file, relevant contracts, and input artifacts — not the orchestrator's reasoning or prior stages' reasoning.
+- Run semantic gates in the `loop:gate-checker` subagent with clean context. Do not evaluate a stage's output in the same context that produced it.
+- Gates are checkpoints, not bottlenecks. Run schema and identity checks inline. Reserve `loop:gate-checker` delegation for semantic checks only.
 - Track degradation across loop iterations. A loop that is not improving is wasting inference budget.
 - Preserve workspace artifacts. Never delete or overwrite artifacts from completed phases unless re-running that phase as part of a correction loop.
 - Report progress to the user between phases. Long pipelines need visibility. After each phase, state what was completed, any gate results, and what comes next.

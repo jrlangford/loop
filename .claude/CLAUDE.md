@@ -30,6 +30,8 @@ Changes to the framework should flow into skills where relevant. Changes to skil
 
 **Shared resources** (not skills — no SKILL.md): `loop/` contains stage instructions, artifact contracts, and vocabulary used by the orchestrator skills above
 
+**Custom agents** (`agents/`): Subagent definitions distributed with the plugin. `stage-runner` executes pipeline stages in isolated context; `gate-checker` evaluates semantic gates in read-only context. Generated pipelines (`/loop:implement`) produce additional agents for web access (`web-stage-runner`, `web-gate-checker`) and MCP-scoped access as needed.
+
 ### Pipeline Two-Level Split
 
 Stages, artifacts, and context-specs are **reusable and workflow-independent**. Gates and loops are **workflow-scoped** — they live under `loop-workspace/workflows/<name>/`. The same stages can participate in multiple workflows with different gate/loop configurations.

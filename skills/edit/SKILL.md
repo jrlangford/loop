@@ -6,6 +6,15 @@ description: "Workflow: edit an existing pipeline design — maps staleness from
 
 Orchestrate the edit workflow for an existing Loop pipeline design. Take a user's modification request, trace its impact through the design's connection graph, selectively re-execute only the affected stages, and verify consistency of the updated design.
 
+## Subagent Types
+
+This skill uses two custom agents distributed with the Loop plugin:
+
+- **`loop:stage-runner`** — Executes pipeline stages in isolated context. Has Read, Write, Edit, Glob, Grep tools. Use for all stage delegations.
+- **`loop:gate-checker`** — Evaluates semantic gates in clean context. Has Read, Glob, Grep tools (read-only). Use for all semantic gate checks.
+
+When delegating to a subagent, always specify the `subagent_type` parameter in the Agent tool call.
+
 ## Pipeline Overview
 
 ```
@@ -77,7 +86,7 @@ Also inventory all existing artifacts so you know the full set for staleness ana
 
 ### Phase 2: Map Staleness
 
-**Delegate to a subagent.** Provide:
+**Delegate to the `loop:stage-runner` subagent** (Agent tool, `subagent_type: "loop:stage-runner"`). Provide:
 - The stage file: `loop/stages/map-staleness.md`
 - The contract file: `loop/contracts/staleness-map.md`
 - All workspace artifacts (full file contents)
@@ -96,7 +105,7 @@ Run after the subagent completes. Two parts:
 - [ ] Every `recommended_stage` value exists in `loop-workspace/stages.md`
 - [ ] `change_source` field is present and non-empty
 
-**Semantic checks** (clean subagent — provide only the staleness map and workspace artifacts, no producing-stage context):
+**Semantic checks** (delegate to the `loop:gate-checker` subagent — Agent tool, `subagent_type: "loop:gate-checker"` — provide only the staleness map and workspace artifacts, no producing-stage context):
 - [ ] Every `cascade_path` is traceable through the connection graph (each hop corresponds to a real dependency, feedback connection, or loop edge)
 - [ ] No invalid cascade paths (referencing connections that do not exist)
 - [ ] No directly-dependent artifact is incorrectly marked as unaffected (check immediate forward dependencies of the change source)
@@ -133,7 +142,7 @@ Determine which stages to re-run from the staleness map. Order them according to
 For each stale artifact in pipeline order:
 
 1. Identify the producing stage from `recommended_stage` in the staleness map.
-2. **Delegate to a subagent** with the same delegation protocol as the design workflow:
+2. **Delegate to the `loop:stage-runner` subagent** (Agent tool, `subagent_type: "loop:stage-runner"`) with the same delegation protocol as the design workflow:
    - Provide the stage file from `loop/stages/`
    - Provide the relevant contract file from `loop/contracts/`
    - Provide upstream artifacts as input. If an upstream artifact was NOT flagged stale, use the existing version. If it was stale and has already been re-executed in this pass, use the freshly updated version.
@@ -159,7 +168,7 @@ For each stale artifact in pipeline order:
 
 ### Phase 4: Review
 
-1. **Delegate Review Design (Stage 7) to a subagent.** Provide:
+1. **Delegate Review Design (Stage 7) to the `loop:stage-runner` subagent** (Agent tool, `subagent_type: "loop:stage-runner"`). Provide:
    - The stage file: `loop/stages/review-design.md`
    - The contract file: `loop/contracts/review-results.md`
    - All workspace artifacts (updated versions)
@@ -222,5 +231,5 @@ After completion, present:
 - **Never re-invoke Map Staleness from review correction.** This prevents an Ouroboros loop where review triggers staleness mapping which triggers re-execution which triggers review. Flag missed staleness as a WARNING instead.
 - **Be conservative with staleness.** It is cheaper to re-execute an unaffected stage than to miss a genuine inconsistency. When in doubt, include an artifact in the stale set.
 - **Cascade budget: 10 calls per review correction cycle.** Count every subagent delegation, gate evaluation, and loop iteration. Reset at each new review cycle. This prevents runaway cascades.
-- **You are the orchestrator, not the executor.** Each stage is handled by a subagent with its own stage file and contract. Your job is sequencing, gate checking, loop management, staleness tracking, and progress reporting.
+- **You are the orchestrator, not the executor.** Each stage is handled by the `loop:stage-runner` subagent with its own stage file and contract. Semantic gates use the `loop:gate-checker` subagent. Your job is sequencing, gate checking, loop management, staleness tracking, and progress reporting.
 - **Preserve the workspace.** Never delete artifacts from previous phases. Overwrite stale artifacts with fresh versions — the workspace is the pipeline's state.
