@@ -10,11 +10,13 @@ Place validation checkpoints at artifact boundaries.
 
 ## Input
 
+- **Artifact**: Transformation Definition — read from `loop-workspace/transformation.md`
+  - Contract: Read `loop/contracts/transformation-definition.md`
 - **Artifact**: Stage Decomposition — read from `loop-workspace/stages.md`
   - Contract: Read `loop/contracts/stage-decomposition.md`
 - **Artifact**: Artifact Specifications — read from `loop-workspace/artifacts.md`
   - Contract: Read `loop/contracts/artifact-specifications.md`
-- **Pipeline input**: Interaction level (`minimal` | `per-stage` | `none`)
+- **Pipeline input**: Pipeline interaction level (`minimal` | `per-stage` | `none`) — the interaction level the *designed pipeline* will have at runtime
 - **Pipeline input**: Workflow name (gates are workflow-scoped)
 
 ## Output
@@ -40,11 +42,26 @@ Place validation checkpoints at artifact boundaries.
    - **carries**: What feedback the re-running stage receives. Be specific — "which fields are missing" not "there were problems."
    - **max_retries**: How many times to retry. 1-3 is typical. Higher for cheap deterministic gates, lower for expensive semantic gates.
    - **escalation**: What happens after max retries exhausted. Options: present to user, skip with warning, abort pipeline.
-4. Map **interaction levels to gate types**:
+4. Map **pipeline interaction levels to gate types**:
    - At `none`: All gates are automated (Schema, Metric, Identity, Semantic, Consensus). No Human gates.
    - At `minimal`: Human gates only for critical ambiguities. Most gates automated.
    - At `per-stage`: Human gates after every stage, in addition to automated gates.
-5. For boundaries with combined gate types (e.g., Schema + Semantic), specify the order: run cheap deterministic checks first, expensive semantic checks only if deterministic checks pass.
+5. **Assess human gate candidates** — For every artifact boundary, evaluate against six risk dimensions using signals from `transformation.md`, `stages.md`, and `artifacts.md`. This step runs regardless of pipeline interaction level — it *recommends*, it doesn't *place*. The disposition depends on the interaction level.
+
+   | Dimension | Signal source | Trigger |
+   |-----------|--------------|---------|
+   | **Irreversible side effects** | Stage has sinks (Emit category) | Any external write that can't be undone (database mutations, sent messages, published artifacts) |
+   | **Domain authority gap** | `transformation.md` gap analysis flags domain knowledge | Pipeline lacks an authoritative source for domain validation — correctness depends on knowledge the LLM may not have |
+   | **Subjective quality criteria** | `artifacts.md` validation uses subjective terms (e.g., "clear", "appropriate", "good") | Quality can't be reliably machine-evaluated — requires human taste or judgment |
+   | **High fan-in convergence** | `stages.md` shows 3+ artifacts merging into one stage | Information loss at merge points — a human can catch whether the merge preserved what matters |
+   | **Semantic gate stacking** | 3+ consecutive semantic gates without a deterministic anchor | Probabilistic confidence compounds — each semantic gate adds uncertainty, and without a hard checkpoint the pipeline may drift |
+   | **Error reinforcement risk** | `transformation.md` complexity signals flag reinforcing loops without external correction | A reinforcing loop that lacks external input risks amplifying errors — human review breaks the echo chamber |
+
+   For each boundary where one or more dimensions trigger, produce a `human_gate_candidates[]` entry (see the gate specifications contract for the schema). Set disposition based on pipeline interaction level:
+   - At `none`: disposition = `documented` — record the candidate as an observation in the gate spec but do not place a Human gate.
+   - At `minimal`: promote to a Human gate (or combined gate, e.g., Semantic + Human) if two or more dimensions trigger. For single-dimension triggers, disposition = `documented` unless the dimension is **Irreversible side effects**, which always promotes.
+   - At `per-stage`: promote all candidates to Human gates.
+6. For boundaries with combined gate types (e.g., Schema + Semantic), specify the order: run cheap deterministic checks first, expensive semantic checks only if deterministic checks pass.
 
 ## Sources
 

@@ -40,10 +40,14 @@ Stages 4 (Budget Context) and 5 (Place Gates) run in parallel — they share the
 Collect from the user before starting:
 
 - **Task description**: Natural language description of what the pipeline should do. One sentence to multiple paragraphs.
-- **Interaction level**: `minimal` (default), `per-stage`, or `none`.
+- **Interaction level**: `minimal` (default), `per-stage`, or `none`. Controls how interactive the *design process itself* is — whether intermediate artifacts are presented for approval during pipeline construction.
   - `minimal`: Human review only when gates flag uncertainty or ambiguity.
   - `per-stage`: Present every stage's output to the user before proceeding.
   - `none`: Fully automated, no human checkpoints.
+- **Pipeline interaction level**: `minimal` (default), `per-stage`, or `none`. Controls what interaction level the *designed pipeline* will have at runtime — determines whether the pipeline being designed includes Human gates for its end users. This is independent of the design-time interaction level.
+  - `minimal`: Human gates only for critical ambiguities. Most gates automated.
+  - `per-stage`: Human gates after every stage, in addition to automated gates.
+  - `none`: All gates automated. Human gate candidates are documented but not promoted.
 - **Workflow name**: Name for this workflow (used for workflow-scoped artifacts under `loop-workspace/workflows/<name>/`). Default: `design`.
 
 ## Preconditions
@@ -210,7 +214,7 @@ At `per-stage` interaction: present context specifications to the user.
 
 Delegate to the `loop-stage-runner` subagent (Agent tool, `subagent_type: "loop-stage-runner"`):
 
-> Read the stage file at `loop/stages/place-gates.md`. Read the input contracts at `loop/contracts/stage-decomposition.md` and `loop/contracts/artifact-specifications.md`. Read the output contract at `loop/contracts/gate-specifications.md`. Read the input artifacts from `loop-workspace/stages.md` and `loop-workspace/artifacts.md`. The interaction level is: [level]. The workflow name is: [workflow-name]. Write the output artifact to `loop-workspace/workflows/<workflow-name>/gates.md`.
+> Read the stage file at `loop/stages/place-gates.md`. Read the input contracts at `loop/contracts/stage-decomposition.md` and `loop/contracts/artifact-specifications.md`. Read the output contract at `loop/contracts/gate-specifications.md`. Read the input artifacts from `loop-workspace/stages.md`, `loop-workspace/artifacts.md`, and `loop-workspace/transformation.md`. The pipeline interaction level is: [pipeline-interaction-level]. The workflow name is: [workflow-name]. Write the output artifact to `loop-workspace/workflows/<workflow-name>/gates.md`.
 
 After the subagent completes, read `loop-workspace/workflows/<workflow-name>/gates.md` to verify it exists and is non-empty.
 

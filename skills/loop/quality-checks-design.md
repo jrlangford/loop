@@ -87,6 +87,16 @@ Is pipeline reliability characterized, not just single-run tested?
 - Does the design account for run-to-run variance? Look for: gate pass/fail expectations, loop iteration count estimates, output quality metrics
 - **Severity:** WARNING if no variance consideration exists for pipelines with semantic gates or feedback loops
 
+## Human Intervention Coverage
+
+Are human review points placed where risk warrants them?
+
+- Are there boundaries with human gate candidates that have no Human gate and no documented override rationale? (Unaddressed candidates suggest the designer didn't consider the risk.)
+- For pipelines with `none` pipeline interaction level: are human gate candidates still documented as observations, even though they can't be promoted? (The risk exists regardless of interaction level — documenting it helps operators.)
+- For pipelines with external sinks (Emit stages): is there at least one human gate candidate at or before the first Emit stage? (Irreversible writes without any human review opportunity are high-risk.)
+- Are there `documented` candidates without rationale for why they weren't promoted? (A candidate that was considered and deliberately left as `documented` should explain why.)
+- Do all `overridden` candidates include the designer's rationale for declining? (Overrides without reasoning are indistinguishable from oversights.)
+
 ## Handoff Drift Resilience
 
 Do artifacts resist interpretation drift across stages?

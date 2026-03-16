@@ -24,6 +24,11 @@ Validation checkpoints between stages — positions, types, criteria, failure ro
 | `ungated_boundaries[]` | array | Boundaries without gates |
 | `ungated_boundaries[].boundary` | string | "[Stage A] → [Stage B]" |
 | `ungated_boundaries[].rationale` | string | Why no gate is needed |
+| `human_gate_candidates[]` | array | Boundaries where human review is recommended based on risk assessment (optional — present when Place Gates runs Step 5) |
+| `human_gate_candidates[].boundary` | string | "[Stage A] → [Stage B]" |
+| `human_gate_candidates[].risk_dimensions` | string[] | Which dimensions triggered (from: Irreversible side effects, Domain authority gap, Subjective quality criteria, High fan-in convergence, Semantic gate stacking, Error reinforcement risk) |
+| `human_gate_candidates[].rationale` | string | Why human review is warranted at this boundary |
+| `human_gate_candidates[].disposition` | enum | `promoted` (became a Human gate), `documented` (recorded but not gated), `overridden` (designer declined with rationale) |
 
 ## Identity Fields
 
@@ -40,7 +45,10 @@ Loop configuration, degradation detection — those are the feedback design conc
 - Every gate failure route points to a stage that exists in stages.md
 - Every gate has max_retries > 0 and a non-empty escalation
 - Gate type is from the enum
-- Human gates are used only where interaction level permits
+- Human gates are used only where pipeline interaction level permits
+- Every `human_gate_candidates[].disposition` is from the enum: `promoted`, `documented`, `overridden`
+- Every `human_gate_candidates[].risk_dimensions` entry is from the set: Irreversible side effects, Domain authority gap, Subjective quality criteria, High fan-in convergence, Semantic gate stacking, Error reinforcement risk
+- Every `human_gate_candidates[].boundary` matches a real artifact boundary
 
 ## Reasoning Trace
 

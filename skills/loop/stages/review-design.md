@@ -54,6 +54,13 @@ Check for each of the eight anti-patterns:
 - Every loop's `stages_involved` names exist in stages.md
 - Every context spec's `stage` name exists in stages.md
 
+**Human gate candidate integrity** (if `human_gate_candidates[]` exists in gates.md):
+- Every candidate's `boundary` matches a real artifact boundary in artifacts.md
+- Every candidate's `disposition` is from the enum: `promoted`, `documented`, `overridden`
+- Every candidate's `risk_dimensions` entries are from the valid set: Irreversible side effects, Domain authority gap, Subjective quality criteria, High fan-in convergence, Semantic gate stacking, Error reinforcement risk
+- Every candidate with disposition `promoted` has a corresponding Human gate (or combined gate including Human) at the same boundary
+- Every candidate with disposition `overridden` includes rationale
+
 **Completeness**:
 - Every stage boundary has an artifact specification
 - Every artifact boundary has a gate or ungated justification
