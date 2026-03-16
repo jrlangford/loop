@@ -57,13 +57,16 @@ Are external dependencies validated before the pipeline starts?
 
 - Does the pipeline check that sources and sinks are reachable before starting? (API tokens valid, MCP servers connected, git branch writable, Slack channel exists)
 - Missing precondition checks on pipelines with external dependencies waste all prior work on mid-pipeline failures
-- If stages are delegated to subagents, do subagent prompts include relevant preconditions? Subagents run in isolated contexts and may lack tool access, network permissions, or MCP server connections that the orchestrator validated
+- If stages are delegated to subagents, do subagent prompts include a re-validation step for external access? Subagents run in isolated contexts — tool access validated in the orchestrator does not carry over automatically
 
 ## Context Isolation
 
 Are stages properly isolated from each other?
 
 - **Stage delegation**: Does each stage run in a fresh context (subagent), or does the orchestrator execute stages in its own context? Inline execution accumulates every stage's working memory — file reads, intermediate reasoning, correction attempts — defeating the purpose of staging.
+- **Typed agent delegation**: Does the orchestrator specify a `subagent_type` when delegating stages, or use generic untyped subagents? Typed agents (custom agent definitions with explicit `tools` in frontmatter) guarantee the subagent has the right tool access — especially for stages needing WebSearch, WebFetch, or MCP servers. Generic delegation relies on permission inheritance, which may silently fail when tools require user approval that subagents cannot prompt for.
+- **Agent definitions present**: Does the plugin include an `agents/` directory with agent definitions? Pipelines with external dependencies (web, MCP) should have dedicated agent types (e.g., `<prefix>-web-stage-runner`) that declare the required tools. Missing agent definitions mean tool access depends on the installing user's permission configuration.
+- **Agent name uniqueness**: Are agent names prefixed with the pipeline name (e.g., `review-stage-runner`, not `stage-runner`)? Unprefixed names collide when multiple pipeline plugins are installed — the higher-priority agent shadows the other silently.
 - **Semantic gate isolation**: Do semantic gates run in dedicated subagents with clean context (artifact + criteria only)? A semantic gate evaluated in the same context as the producing stage inherits the production trajectory, making it unreliable.
 - **Loop retry isolation**: When loops re-run a stage after gate failure, does the re-run use a fresh subagent? Re-running in the same context preserves the failed attempt's reasoning, anchoring the retry to the same errors.
 
@@ -89,6 +92,8 @@ Is the pipeline structured for maintainability?
 **Recommended structure:** A Claude Code plugin with a shared resource directory (`skills/<prefix>/`) containing `stages/` (reference documents) and `contracts/` (artifact schemas), plus orchestrator skills (`skills/run/`) as the only user-facing entry points.
 
 **Plugin packaging:** A `.claude-plugin/plugin.json` manifest enables namespaced invocation (`/<prefix>:run`), prevents skill name collisions, and makes the pipeline distributable. Check that the `name` field matches the skill prefix, `keywords` includes `"loop-pipeline"`, and all skills are under `skills/`.
+
+**Agent definitions:** Pipelines that delegate stages to subagents should include an `agents/` directory with custom agent definitions. At minimum: `<prefix>-stage-runner` (stage executor) and `<prefix>-gate-checker` (semantic gate evaluator). Pipelines with web sources need `<prefix>-web-stage-runner`; pipelines with MCP dependencies need `<prefix>-<source>-stage-runner` with scoped `mcpServers`. Missing agent definitions are a WARNING for pipelines without external dependencies and an ERROR for pipelines with web or MCP sources (tool access will silently fail).
 
 ## Loop Safety
 

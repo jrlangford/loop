@@ -33,11 +33,13 @@ Read implementation files to understand what the pipeline actually does. Adapt t
 
 Use subagents for parallel discovery when the implementation has many files.
 
-Build a working understanding at both levels:
+Build a working understanding at three levels:
 
 **Stage level**: What transformation units exist, what artifacts pass between them, what each stage loads into context, what external sources each stage reads from, what external sinks each stage writes to.
 
 **Workflow level**: How stages are sequenced, where gates are placed, what feedback loops exist, what iteration bounds and termination conditions are configured.
+
+**Agent level**: Check for an `agents/` directory at the plugin root. If present, read each agent definition and note: agent names, declared tools, MCP server scoping, and which orchestrator stages reference each agent. If absent, note it — this is relevant for context isolation and precondition checks.
 
 ### Step 2: Check for design artifacts
 
@@ -71,7 +73,7 @@ Apply each quality check to the **implementation**. For each dimension, examine 
 
 **Context window budget**: Estimate actual token usage per stage based on files loaded.
 
-**Source dependencies**, **sink dependencies**, **precondition checks**, **context isolation**, **stage/workflow separation**, **implementation structure**, **loop safety**, **stochastic validation**, **handoff drift resilience** — apply the check criteria from `loop/quality-checks.md` to the implementation.
+**Source dependencies**, **sink dependencies**, **precondition checks**, **context isolation** (including typed agent delegation, agent definitions, and agent name uniqueness), **stage/workflow separation**, **implementation structure** (including agent definitions), **loop safety**, **stochastic validation**, **handoff drift resilience** — apply the check criteria from `loop/quality-checks.md` to the implementation.
 
 ### Step 5: Compare against design (if artifacts exist)
 
