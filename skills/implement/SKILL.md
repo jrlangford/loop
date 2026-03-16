@@ -36,11 +36,11 @@ A Claude Code plugin containing a shared resource directory, agent definitions, 
   .claude-plugin/
     plugin.json                     — plugin manifest (name, description, version, keywords)
   agents/
-    stage-runner.md                 — default stage executor (always generated)
-    gate-checker.md                 — semantic gate evaluator (always generated)
-    web-stage-runner.md             — stage executor with web access (if pipeline has web sources)
-    web-gate-checker.md             — gate evaluator with web access (if pipeline has web-based verification)
-    <custom>.md                     — MCP-scoped agents (if pipeline has MCP sources/sinks)
+    <prefix>-stage-runner.md        — default stage executor (always generated)
+    <prefix>-gate-checker.md        — semantic gate evaluator (always generated)
+    <prefix>-web-stage-runner.md    — stage executor with web access (if pipeline has web sources)
+    <prefix>-web-gate-checker.md    — gate evaluator with web access (if pipeline has web-based verification)
+    <prefix>-<source>-stage-runner.md — MCP-scoped agents (if pipeline has MCP sources/sinks)
   skills/
     <prefix>/                       — shared resources (not a skill — no SKILL.md)
       stages/
@@ -177,37 +177,37 @@ Create agent definitions in `agents/` at the output plugin root. These agents ar
 
 #### Always generate:
 
-**`agents/stage-runner.md`** — Default stage executor:
+**`agents/<prefix>-stage-runner.md`** — Default stage executor:
 
 ```markdown
 ---
-name: stage-runner
-description: Execute a pipeline stage in isolated context. Use for any stage delegation during pipeline execution.
+name: <prefix>-stage-runner
+description: Execute a <pipeline-purpose> stage in isolated context. Use for stage delegation during <prefix> pipeline execution.
 tools: Read, Write, Edit, Glob, Grep
 model: inherit
 ---
 
-You are a stage executor. You receive a prompt with a stage file, contract files,
-an input artifact path, and an output artifact path. Execute the stage instructions
-precisely, read the input artifact, apply the transformation, and write the output
-artifact conforming to the output contract. Do not access files beyond those
-specified in your prompt.
+You are a stage executor for the <prefix> pipeline. You receive a prompt with
+a stage file, contract files, an input artifact path, and an output artifact path.
+Execute the stage instructions precisely, read the input artifact, apply the
+transformation, and write the output artifact conforming to the output contract.
+Do not access files beyond those specified in your prompt.
 ```
 
-**`agents/gate-checker.md`** — Semantic gate evaluator:
+**`agents/<prefix>-gate-checker.md`** — Semantic gate evaluator:
 
 ```markdown
 ---
-name: gate-checker
-description: Evaluate a semantic gate in clean context. Use for all semantic gate checks during pipeline execution.
+name: <prefix>-gate-checker
+description: Evaluate a semantic gate for the <pipeline-purpose> pipeline in clean context. Use for semantic gate checks during <prefix> pipeline execution.
 tools: Read, Glob, Grep
 model: inherit
 ---
 
-You are a semantic gate evaluator. You receive an artifact to evaluate and
-validation criteria. Evaluate the artifact against the criteria and report pass
-or fail with specific evidence. You are deliberately isolated from the context
-that produced this artifact. Do not modify any files.
+You are a semantic gate evaluator for the <prefix> pipeline. You receive an
+artifact to evaluate and validation criteria. Evaluate the artifact against the
+criteria and report pass or fail with specific evidence. You are deliberately
+isolated from the context that produced this artifact. Do not modify any files.
 ```
 
 #### Conditionally generate based on preconditions:
@@ -216,36 +216,38 @@ Inspect the pipeline's sources, sinks, and preconditions. Generate additional ag
 
 **If any stage has web sources** (WebSearch, WebFetch, web APIs via fetch):
 
-**`agents/web-stage-runner.md`**:
+**`agents/<prefix>-web-stage-runner.md`**:
 ```markdown
 ---
-name: web-stage-runner
-description: Execute a pipeline stage that requires web access. Use when a stage reads from web sources or needs web search for enrichment.
+name: <prefix>-web-stage-runner
+description: Execute a <pipeline-purpose> stage that requires web access. Use when a stage reads from web sources or needs web search for enrichment.
 tools: Read, Write, Edit, Glob, Grep, WebSearch, WebFetch
 model: inherit
 ---
 
-You are a stage executor with web access. Before starting work, perform a test
-web search to confirm access. If unavailable, report the failure and stop.
+You are a stage executor for the <prefix> pipeline with web access. Before
+starting work, perform a test web search to confirm access. If unavailable,
+report the failure and stop.
 
-[Same execution rules as stage-runner]
+[Same execution rules as <prefix>-stage-runner]
 ```
 
 **If any gate requires web-based verification** (e.g., checking citations against live URLs):
 
-**`agents/web-gate-checker.md`**:
+**`agents/<prefix>-web-gate-checker.md`**:
 ```markdown
 ---
-name: web-gate-checker
-description: Evaluate a semantic gate that requires web access for verification. Use when gate criteria involve checking external sources.
+name: <prefix>-web-gate-checker
+description: Evaluate a semantic gate for the <pipeline-purpose> pipeline that requires web access for verification. Use when gate criteria involve checking external sources.
 tools: Read, Glob, Grep, WebSearch, WebFetch
 model: inherit
 ---
 
-You are a semantic gate evaluator with web access. Before starting work, perform
-a test web search to confirm access. If unavailable, report the failure and stop.
+You are a semantic gate evaluator for the <prefix> pipeline with web access.
+Before starting work, perform a test web search to confirm access. If unavailable,
+report the failure and stop.
 
-[Same evaluation rules as gate-checker]
+[Same evaluation rules as <prefix>-gate-checker]
 ```
 
 **If any stage uses MCP servers** (Notion, Slack, databases, etc.):
@@ -254,27 +256,28 @@ Generate a custom agent per MCP server dependency. Use the `mcpServers` field to
 
 ```markdown
 ---
-name: <source-name>-stage-runner
-description: Execute a pipeline stage that requires <source-name> access.
+name: <prefix>-<source-name>-stage-runner
+description: Execute a <pipeline-purpose> stage that requires <source-name> access.
 tools: Read, Write, Edit, Glob, Grep
 mcpServers:
   - <server-name>
 model: inherit
 ---
 
-You are a stage executor with access to <source-name> via MCP. Before starting
-work, make a test call to confirm the MCP server is available. If unavailable,
-report the failure and stop.
+You are a stage executor for the <prefix> pipeline with access to <source-name>
+via MCP. Before starting work, make a test call to confirm the MCP server is
+available. If unavailable, report the failure and stop.
 
-[Same execution rules as stage-runner]
+[Same execution rules as <prefix>-stage-runner]
 ```
 
 Where `<server-name>` references an MCP server the user has configured. The orchestrator's precondition check validates that the server is available before delegating to this agent.
 
 #### Agent naming convention
 
-- Agent names are kebab-cased and descriptive of their capability
-- The plugin `name` in `plugin.json` automatically namespaces agents (e.g., if the plugin is named `review`, agents are referenced as `review:stage-runner`)
+- Agent names are prefixed with `<prefix>` (the pipeline's skill prefix) to prevent collisions when multiple pipeline plugins are installed globally
+- Names are kebab-cased: `<prefix>-stage-runner`, `<prefix>-gate-checker`, `<prefix>-web-stage-runner`, etc.
+- Descriptions include the pipeline's purpose to further disambiguate (e.g., "Execute a **review** stage" vs "Execute a **debt** stage")
 - Each orchestrator must document which agent types it uses in its Subagent Types section
 
 ### Step 8: Generate orchestrator skills
@@ -289,9 +292,9 @@ For each workflow in `loop-workspace/workflows/`, use `/skill-creator` to genera
 
    This skill uses custom agents distributed with this plugin:
 
-   - **`<prefix>:stage-runner`** — Executes pipeline stages in isolated context.
-   - **`<prefix>:gate-checker`** — Evaluates semantic gates in clean context (read-only).
-   - **`<prefix>:web-stage-runner`** — Executes stages requiring web access. *(only if generated)*
+   - **`<prefix>-stage-runner`** — Executes pipeline stages in isolated context.
+   - **`<prefix>-gate-checker`** — Evaluates semantic gates in clean context (read-only).
+   - **`<prefix>-web-stage-runner`** — Executes stages requiring web access. *(only if generated)*
 
    When delegating to a subagent, always specify the `subagent_type` parameter.
    ```
@@ -299,16 +302,16 @@ For each workflow in `loop-workspace/workflows/`, use `/skill-creator` to genera
 5. **Pipeline overview**: a visual diagram showing stage flow, gates, and loops
 6. **Phase-by-phase instructions**: for each stage:
    - **Delegate the stage to the appropriate agent** via the Agent tool with `subagent_type`. Choose the agent based on the stage's dependencies:
-     - Stages with no external dependencies → `<prefix>:stage-runner`
-     - Stages with web sources → `<prefix>:web-stage-runner`
-     - Stages with MCP dependencies → `<prefix>:<source-name>-stage-runner`
+     - Stages with no external dependencies → `<prefix>-stage-runner`
+     - Stages with web sources → `<prefix>-web-stage-runner`
+     - Stages with MCP dependencies → `<prefix>-<source-name>-stage-runner`
    - The subagent's prompt must include: (a) the stage file contents, (b) the relevant contract files for input and output schemas, (c) the input artifact path in `<prefix>-workspace/`, (d) the output artifact path to write. The orchestrator does **not** execute stage transformations in its own context.
    - After the subagent completes, the orchestrator reads the output artifact from `<prefix>-workspace/` to verify it exists and proceed.
-   - Run gate checks after each stage. Schema and metric gates run inline. **Semantic gates must run in the `<prefix>:gate-checker` subagent** (or `<prefix>:web-gate-checker` if web verification is needed) with clean context containing only the artifact, validation criteria, and (where relevant) the original source material.
+   - Run gate checks after each stage. Schema and metric gates run inline. **Semantic gates must run in the `<prefix>-gate-checker` subagent** (or `<prefix>-web-gate-checker` if web verification is needed) with clean context containing only the artifact, validation criteria, and (where relevant) the original source material.
    - Handle loop feedback: on gate failure, re-run the stage subagent with the gate feedback appended to its prompt.
 7. **Error handling**: stage failure, human escalation, pipeline abort. For Emit stages, include sink failure handling.
 8. **Resumption table**: maps output artifacts to phases — if an artifact already exists in `<prefix>-workspace/`, the corresponding phase can be skipped.
-9. **Guidance**: orchestrator-specific rules (delegate each stage to the appropriate agent for context isolation, run semantic gates in `<prefix>:gate-checker` subagents, gates are checkpoints not bottlenecks, track degradation, preserve workspace, report progress)
+9. **Guidance**: orchestrator-specific rules (delegate each stage to the appropriate agent for context isolation, run semantic gates in `<prefix>-gate-checker` subagents, gates are checkpoints not bottlenecks, track degradation, preserve workspace, report progress)
 
 #### Orchestrator Mapping Rules
 
@@ -331,7 +334,7 @@ For each workflow in `loop-workspace/workflows/`, use `/skill-creator` to genera
 
 **Parallel stages**: If `stages.md` shows independent stages sharing the same input (no dependency between them), the orchestrator should note they can run in parallel.
 
-**Subagent precondition propagation**: When stages have external dependencies, the orchestrator must delegate to the correct agent type (e.g., `<prefix>:web-stage-runner` for web-dependent stages, `<prefix>:<source-name>-stage-runner` for MCP-dependent stages). The agent definition declares the required tools — the orchestrator does not need to list tools in the prompt. However, the orchestrator must still: (1) instruct the subagent to perform a lightweight re-validation of external access before starting work, and (2) specify what to do if access is unavailable (report failure, not silently degrade).
+**Subagent precondition propagation**: When stages have external dependencies, the orchestrator must delegate to the correct agent type (e.g., `<prefix>-web-stage-runner` for web-dependent stages, `<prefix>-<source-name>-stage-runner` for MCP-dependent stages). The agent definition declares the required tools — the orchestrator does not need to list tools in the prompt. However, the orchestrator must still: (1) instruct the subagent to perform a lightweight re-validation of external access before starting work, and (2) specify what to do if access is unavailable (report failure, not silently degrade).
 
 **Resumption table**: Build from the artifact list — one row per stage, mapping its output artifact to a "skip this phase" decision.
 
@@ -343,10 +346,11 @@ After generating all files, perform both `/skill-creator`'s validation checklist
 - [ ] `.claude-plugin/plugin.json` exists with valid `name`, `description`, and `keywords` (includes `"loop-pipeline"`)
 - [ ] Plugin `name` matches the skill prefix
 - [ ] All skills are under `skills/` directory
-- [ ] `agents/stage-runner.md` and `agents/gate-checker.md` exist
-- [ ] If any stage has web sources, `agents/web-stage-runner.md` exists
-- [ ] If any gate requires web verification, `agents/web-gate-checker.md` exists
-- [ ] If any stage uses MCP servers, corresponding `agents/<source-name>-stage-runner.md` exists
+- [ ] `agents/<prefix>-stage-runner.md` and `agents/<prefix>-gate-checker.md` exist
+- [ ] If any stage has web sources, `agents/<prefix>-web-stage-runner.md` exists
+- [ ] If any gate requires web verification, `agents/<prefix>-web-gate-checker.md` exists
+- [ ] If any stage uses MCP servers, corresponding `agents/<prefix>-<source-name>-stage-runner.md` exists
+- [ ] All agent names are prefixed with `<prefix>` to prevent cross-plugin collisions
 - [ ] Every agent has valid frontmatter (`name`, `description`, `tools`)
 
 **Pipeline completeness**:
@@ -375,7 +379,7 @@ After generating all files, perform both `/skill-creator`'s validation checklist
 
 **Context isolation**:
 - [ ] Every stage is delegated to a subagent with explicit `subagent_type`
-- [ ] Semantic gates run in `<prefix>:gate-checker` (or `<prefix>:web-gate-checker`) subagents, not inline
+- [ ] Semantic gates run in `<prefix>-gate-checker` (or `<prefix>-web-gate-checker`) subagents, not inline
 - [ ] The orchestrator's own context contains only orchestration state, not stage working memory
 - [ ] Each subagent prompt includes only the stage file, relevant contracts, and input artifact path
 - [ ] Orchestrator's Subagent Types section lists all agent types used
@@ -413,7 +417,7 @@ The `skills/<prefix>/` directory within the plugin contains all stage instructio
 
 Stage files are instruction documents that orchestrators read at the appropriate time. They are not independently invocable skills. This is intentional:
 
-- **Context isolation**: Each stage runs in a dedicated agent (e.g., `<prefix>:stage-runner`) with fresh context. Tool access is declared in the agent definition, not propagated via prompt.
+- **Context isolation**: Each stage runs in a dedicated agent (e.g., `<prefix>-stage-runner`) with fresh context. Tool access is declared in the agent definition, not propagated via prompt.
 - **Sequencing control**: The orchestrator controls when each stage runs.
 - **Simplicity**: Users run one command (`/<prefix>:run`).
 

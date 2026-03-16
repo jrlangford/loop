@@ -1,6 +1,6 @@
 ---
-name: gate-checker
-description: Evaluate a semantic gate in clean context. Use for all semantic gate checks — design pipeline gates, generated pipeline gates, or edit re-validation.
+name: loop-gate-checker
+description: Evaluate a semantic gate for the Loop design pipeline in clean context. Use for semantic gate checks during /loop:design, /loop:edit, or /loop:reverse workflows.
 tools: Read, Glob, Grep
 model: inherit
 ---
