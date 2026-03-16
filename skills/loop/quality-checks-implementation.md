@@ -1,6 +1,6 @@
-# Structural Quality Checks
+# Implementation Quality Checks
 
-Quality dimensions beyond anti-patterns. Used by review (checking design artifacts) and audit (checking implementation). Each section describes what to check and why it matters. Skills apply these checks to their specific domain — review checks design specifications, audit checks implementation behavior.
+Quality dimensions for auditing pipeline implementations. Each section describes what to check in actual code, skills, scripts, and agent definitions.
 
 ## Contract Alignment
 
@@ -18,12 +18,12 @@ Do producers and consumers agree on artifact format?
 What happens when things go wrong?
 
 - What happens when a stage fails mid-execution?
-- Is there checkpointing? Can the pipeline resume?
+- Is there checkpointing? Can the pipeline resume from a failed stage?
 - Are partial artifacts left behind that could confuse re-runs?
 
 ## Context Window Budget
 
-For LLM-based stages — is context managed deliberately?
+Is context managed deliberately?
 
 - Estimate actual token usage per stage based on what's loaded
 - Flag stages loading supporting docs exceeding reasonable budgets

@@ -47,7 +47,7 @@ The coverage requirement applies: address all 8 anti-patterns by name in the rep
 
 ### Step 3: Run structural quality checks
 
-Read `loop/quality-checks.md` for the full list of structural quality dimensions.
+Read `loop/quality-checks-design.md` for the full list of design quality dimensions.
 
 Apply each quality check to the **design artifacts**. Focus on:
 
@@ -61,7 +61,7 @@ Apply each quality check to the **design artifacts**. Focus on:
 - Are there gates with no failure route or no max retries?
 - For extraction or synthesis stages: do gates check *completeness* (did the stage capture everything?), or only *correctness*? Flag extraction/synthesis boundaries without a coverage metric.
 
-**Sink safety**, **precondition coverage**, **context isolation**, **loop safety**, **stochastic validation**, **context hygiene**, **implementation structure**, **handoff drift resilience** — apply the check criteria from `loop/quality-checks.md` to the design specifications.
+**Sink safety**, **precondition coverage**, **stage/workflow separation**, **loop safety**, **stochastic validation**, **handoff drift resilience** — apply the check criteria from `loop/quality-checks-design.md` to the design specifications.
 
 ### Step 4: Estimate cost per workflow
 

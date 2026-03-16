@@ -63,7 +63,7 @@ The coverage requirement applies: address all 8 anti-patterns by name in the rep
 
 ### Step 4: Run structural quality checks
 
-Read `loop/quality-checks.md` for the full list of structural quality dimensions.
+Read `loop/quality-checks-implementation.md` for the full list of implementation quality dimensions.
 
 Apply each quality check to the **implementation**. For each dimension, examine how the implementation actually behaves:
 
@@ -73,7 +73,7 @@ Apply each quality check to the **implementation**. For each dimension, examine 
 
 **Context window budget**: Estimate actual token usage per stage based on files loaded.
 
-**Source dependencies**, **sink dependencies**, **precondition checks**, **context isolation** (including typed agent delegation, agent definitions, and agent name uniqueness), **stage/workflow separation**, **implementation structure** (including agent definitions), **loop safety**, **stochastic validation**, **handoff drift resilience** — apply the check criteria from `loop/quality-checks.md` to the implementation.
+**Source dependencies**, **sink dependencies**, **precondition checks**, **context isolation** (including typed agent delegation, agent definitions, and agent name uniqueness), **stage/workflow separation**, **implementation structure** (including agent definitions), **loop safety**, **stochastic validation**, **handoff drift resilience** — apply the check criteria from `loop/quality-checks-implementation.md` to the implementation.
 
 ### Step 5: Compare against design (if artifacts exist)
 
