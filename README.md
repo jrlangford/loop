@@ -112,7 +112,7 @@ loop-workspace/
 
 ## Anti-Patterns
 
-The framework defines eight anti-patterns that the audit skills check for:
+The framework defines nine anti-patterns that the audit skills check for:
 
 1. **Kitchen Sink Stage** — A stage doing too many things
 2. **Echo Chamber Loop** — Reinforcing loop without novelty detection
@@ -122,6 +122,7 @@ The framework defines eight anti-patterns that the audit skills check for:
 6. **Ouroboros** — Unintentional circular dependencies
 7. **Telephone Game** — Cumulative interpretation drift across stages
 8. **Fire-and-Forget Emit** — External write without idempotency, pre-write gate, or tight loop caps
+9. **Toll Booth Pipeline** — Mandatory human gate acting as a cut vertex, splitting workflow into two disconnected halves
 
 ## Documentation
 

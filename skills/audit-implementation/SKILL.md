@@ -53,13 +53,13 @@ If design artifacts exist, note them — they'll be used for discrepancy analysi
 
 ### Step 3: Run anti-pattern checks
 
-Read `loop/anti-patterns.md` for the full anti-pattern catalogue (8 anti-patterns with definitions, check criteria, and severity guidelines).
+Read `loop/anti-patterns.md` for the full anti-pattern catalogue (9 anti-patterns with definitions, check criteria, and severity guidelines).
 
 Apply each anti-pattern check to the **implementation directly**. Implementation-level checks catch things design review misses — a design might specify clean stage boundaries while the implementation has them coupled, or a design might specify gates that the implementation doesn't enforce.
 
 For each anti-pattern, examine the actual code, skills, or scripts. Report findings with the severity levels specified in the catalogue.
 
-The coverage requirement applies: address all 8 anti-patterns by name in the report.
+The coverage requirement applies: address all 9 anti-patterns by name in the report.
 
 ### Step 4: Run structural quality checks
 

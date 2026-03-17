@@ -39,11 +39,11 @@ Note what's present and what's missing. Missing files are findings (severity: in
 
 ### Step 2: Run anti-pattern checks
 
-Read `loop/anti-patterns.md` for the full anti-pattern catalogue (8 anti-patterns with definitions, check criteria, and severity guidelines).
+Read `loop/anti-patterns.md` for the full anti-pattern catalogue (9 anti-patterns with definitions, check criteria, and severity guidelines).
 
 Apply each anti-pattern check to the **design artifacts**. For each check, evaluate the design specifications — stage intents, artifact contracts, gate criteria, loop configurations — not implementation code. Report findings with the severity levels specified in the catalogue.
 
-The coverage requirement applies: address all 8 anti-patterns by name in the report. For clean checks, include an INFO-level confirmation.
+The coverage requirement applies: address all 9 anti-patterns by name in the report. For clean checks, include an INFO-level confirmation.
 
 ### Step 3: Run structural quality checks
 

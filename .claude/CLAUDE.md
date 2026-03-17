@@ -49,7 +49,7 @@ Skills in `skills/` are distributed as a Claude Code plugin. When installed, the
 
 ## Anti-Patterns
 
-The framework defines eight anti-patterns that review/audit skills check for:
+The framework defines nine anti-patterns that review/audit skills check for:
 1. **Kitchen Sink Stage** — stage doing too many things
 2. **Echo Chamber Loop** — reinforcing loop without novelty detection
 3. **History Avalanche** — unbounded context accumulation
@@ -58,3 +58,4 @@ The framework defines eight anti-patterns that review/audit skills check for:
 6. **Ouroboros** — unintentional circular dependencies
 7. **Telephone Game** — cumulative interpretation drift across stages
 8. **Fire-and-Forget Emit** — external write without idempotency, pre-write gate, or tight loop caps
+9. **Toll Booth Pipeline** — mandatory human gate acting as a cut vertex, splitting workflow into two disconnected halves

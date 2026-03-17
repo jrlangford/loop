@@ -31,7 +31,7 @@ Contracts:
 
 ### 1. Anti-Pattern Check
 
-Check for each of the eight anti-patterns:
+Check for each of the nine anti-patterns:
 
 | Anti-pattern | What to look for |
 |-------------|-----------------|
@@ -43,6 +43,7 @@ Check for each of the eight anti-patterns:
 | **Ouroboros** | Circular dependencies where loop A triggers loop B which triggers loop A; re-grounding or review loops that can cascade infinitely |
 | **Telephone Game** | Free-text fields carried across 3+ stages without re-grounding; paraphrased references instead of IDs; no identity fields at boundaries |
 | **Fire-and-Forget Emit** | Emit stages without idempotency strategy, pre-write gate, or iteration caps on loops containing them |
+| **Toll Booth Pipeline** | A mandatory Human gate (fires every run, not just on escalation) that acts as a cut vertex — all paths pass through it, the two halves share no feedback loops or artifacts, and the workflow is really two workflows joined by a human handoff |
 
 ### 2. Consistency Checks
 

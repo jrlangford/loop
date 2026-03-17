@@ -1,6 +1,6 @@
 # Anti-Pattern Catalogue
 
-Eight anti-patterns that indicate structural problems in LLM pipelines. Used by review (checking design artifacts) and audit (checking implementation). Each check must be addressed by name — a missing check means it wasn't performed, not that the pipeline is clean.
+Nine anti-patterns that indicate structural problems in LLM pipelines. Used by review (checking design artifacts) and audit (checking implementation). Each check must be addressed by name — a missing check means it wasn't performed, not that the pipeline is clean.
 
 ## 1. Kitchen Sink Stage
 
@@ -101,6 +101,20 @@ External writes without safety controls.
 
 **Severity:** ERROR if emit stage has no idempotency strategy or no upstream gate; WARNING if loop re-entry through emit stage without tight cap
 
+## 9. Toll Booth Pipeline
+
+A mandatory human gate that acts as a cut vertex — removing it would disconnect the workflow into two independent subgraphs. If the pipeline always stops at a human gate (not just on escalation after retries, but as the default mode), the two halves have no automated connection. The workflow is really two workflows joined by a human handoff pretending to be one.
+
+**What to look for:**
+- A Human gate (not combined with automated types) that fires on every run, not just as an escalation path after retry exhaustion
+- A promoted human gate candidate where all paths from pipeline input to pipeline output pass through that single gate — the graph-theoretic cut vertex
+- A human gate that is the sole connection between an upstream subgraph and a downstream subgraph (no alternative automated paths exist)
+- Workflows where the stages before and after the human gate have no shared artifacts or feedback loops — they are structurally independent
+
+**Severity:** WARNING — the pipeline works, but the designer should consider whether it would be cleaner as two independent workflows with the human handoff as the explicit boundary between them. Promote to ERROR if the two halves have completely disjoint stage sets, artifact sets, and loop sets (no structural reason to be one workflow).
+
+**Fix:** Split into two workflows. The first workflow's final artifact becomes the input the human reviews. The second workflow's preconditions include "human-approved artifact from workflow 1 is available." This makes the human decision boundary explicit, allows the two halves to evolve independently, and avoids a pipeline that sits idle waiting for a human who may not respond for hours or days.
+
 ## Coverage Requirement
 
-Every review or audit report must address all 8 anti-patterns by name. For clean anti-patterns, include an INFO-level note confirming the check passed (e.g., "INFO: Ouroboros — no circular dependencies found").
+Every review or audit report must address all 9 anti-patterns by name. For clean anti-patterns, include an INFO-level note confirming the check passed (e.g., "INFO: Ouroboros — no circular dependencies found").

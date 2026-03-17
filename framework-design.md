@@ -752,6 +752,14 @@ An Emit stage (one with sink dependencies) that writes to an external system wit
 
 **Fix:** Gate artifacts thoroughly *before* Emit stages, not after. Require idempotency markers (stable identifiers that prevent duplicate writes on retry). Keep loop iteration caps tight (≤3) for any loop that passes through an Emit stage. For notification sinks (Slack, email, webhooks), treat failures as fire-and-forget — log but don't block the pipeline.
 
+### 6.9 The Toll Booth Pipeline
+
+A mandatory human gate — one that fires on every run as its default mode, not just as an escalation after retry exhaustion — that acts as a **cut vertex** in the workflow graph. Removing the gate would disconnect the workflow into two independent subgraphs with no automated path between them. The pipeline always stops at this point and waits for a human who may not respond for hours or days. The two halves have no shared feedback loops, no shared artifacts, and no structural reason to be one workflow — they are two pipelines pretending to be one, joined only by a human handoff.
+
+This is distinct from escalation (which is exceptional and may never fire) and from human gates in combined gates like Schema + Human (where the automated check runs first and the human gate only fires if the automated check can't make the call). The Toll Booth is a *mandatory* stop that *always* blocks.
+
+**Fix:** Split into two independent workflows. The first workflow's final artifact becomes the input the human reviews externally. The second workflow declares as a precondition that the human-approved artifact is available. This makes the decision boundary explicit, allows the two halves to evolve independently, and prevents a pipeline from sitting idle waiting for human input.
+
 ---
 
 ## 7. Relationship to Existing Work

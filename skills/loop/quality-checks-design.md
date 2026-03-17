@@ -96,6 +96,7 @@ Are human review points placed where risk warrants them?
 - For pipelines with external sinks (Emit stages): is there at least one human gate candidate at or before the first Emit stage? (Irreversible writes without any human review opportunity are high-risk.)
 - Are there `documented` candidates without rationale for why they weren't promoted? (A candidate that was considered and deliberately left as `documented` should explain why.)
 - Do all `overridden` candidates include the designer's rationale for declining? (Overrides without reasoning are indistinguishable from oversights.)
+- Does any promoted Human gate act as a **cut vertex** — a mandatory stop where all paths from pipeline input to output pass through that single gate, with no alternative automated path? If so, flag as a Toll Booth Pipeline (anti-pattern #9): the workflow is likely two independent workflows joined by a human handoff and should be split.
 
 ## Handoff Drift Resilience
 
