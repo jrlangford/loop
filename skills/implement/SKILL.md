@@ -128,6 +128,8 @@ Also create `skills/<prefix>/contracts/_pipeline.md` containing:
 - Workspace path conventions (`<prefix>-workspace/` layout)
 - Artifact file naming rules
 
+Also create `skills/<prefix>/contracts/execution-manifest.md` containing the full JSON schema for the execution manifest. Derive the schema from `loop-workspace/artifacts.md` (Runtime Artifact: Execution Manifest), tailored to this pipeline's specific stages, gates, and loops. The contract should include an example manifest showing the pipeline's stages pre-populated with `pending` status.
+
 ### Step 6: Generate stage files
 
 For each stage in `stages.md`, create a file in `skills/<prefix>/stages/`:
@@ -330,7 +332,25 @@ For each workflow in `loop-workspace/workflows/`, use `/skill-creator` to genera
 7. **Error handling**: stage failure, human escalation, pipeline abort. For Emit stages, include sink failure handling. Specifically:
    - When a subagent response contains an `## ESCALATION` block, the orchestrator must use `AskUserQuestion` to present the escalation reason and suggested action to the user. Offer options like "Provide clarification", "Skip this stage", or "Abort pipeline". Feed the user's response back into the subagent retry.
    - When a feedback loop's cascade budget is exhausted, use `AskUserQuestion` to present which corrections completed and which were cut short, and let the user decide whether to continue, accept the current state, or abort.
-8. **Resumption table**: maps output artifacts to phases — if an artifact already exists in `<prefix>-workspace/`, the corresponding phase can be skipped.
+8. **Execution manifest**: The orchestrator maintains an execution manifest that persists execution state across sessions. The manifest path is `<prefix>-workspace/execution-manifest.json` for single-workflow pipelines, or `<prefix>-workspace/execution-manifest-<workflow>.json` for multi-workflow pipelines (each workflow has its own manifest). The generated orchestrator must include:
+   - **Manifest initialization**: On first run, create the manifest with `pipeline_name`, `workflow_name`, `run_id` (UUID), `started_at`, and all stages set to `pending`. Initialize `gates`, `loops`, `cascade_budgets`, and `decisions` as empty arrays.
+   - **Checkpoint protocol**: Update the manifest and write it to disk:
+     - Before starting a stage: set its status to `in_progress`, record `started_at`
+     - After completing a stage: set status to `complete`, record `completed_at`
+     - After each item in a fan-out stage: update the item's status
+     - After each gate attempt: append to the gate's `attempts` array
+     - After each loop iteration: increment the loop's `iteration_count`
+     - After each cascade call: increment `cascade_budgets[].used`
+     - After each human decision: append to `decisions` array
+     - On error: set stage/item status to `failed`, record the error message
+     - Always update `updated_at` on every checkpoint write
+   - **Resumption protocol**: On pipeline invocation, check for an existing manifest. If found:
+     - Present a status summary to the user (which stages complete, where it stopped, any errors)
+     - Offer to resume or start fresh
+     - If resuming: skip `complete` stages; for `in_progress` stages, check if the output artifact exists and is valid — if yes mark complete, if no restart the stage; for fan-out stages, continue from the first `pending` or `in_progress` item; restore loop iteration counts (don't reset to 0); restore cascade budgets (don't reset to full); don't re-ask human decisions already in the `decisions` array
+     - If starting fresh: rename the existing manifest to `execution-manifest[-<workflow>].<timestamp>.json` and create a new one
+   - **Fallback**: If the manifest is missing but workspace artifacts exist, fall back to artifact-presence-based resumption (check which output files exist, skip those stages). Note to the user that execution state (loop counts, decisions) could not be restored.
+   - Reference the execution manifest contract at `<prefix>/contracts/execution-manifest.md` for the full schema.
 9. **Guidance**: orchestrator-specific rules (delegate each stage to the appropriate agent for context isolation, run semantic gates in `<prefix>-gate-checker` subagents, gates are checkpoints not bottlenecks, track degradation, preserve workspace, report progress). Include this human interaction rule: "Subagents cannot interact with the user — they return results to the orchestrator. When a subagent reports failure or includes an `## ESCALATION` block, the orchestrator is responsible for presenting the situation to the user via `AskUserQuestion` and routing the user's decision back into the pipeline (retry with feedback, skip, or abort)."
 
 #### Orchestrator Mapping Rules
@@ -356,7 +376,7 @@ For each workflow in `loop-workspace/workflows/`, use `/skill-creator` to genera
 
 **Subagent precondition propagation**: When stages have external dependencies, the orchestrator must delegate to the correct agent type (e.g., `<prefix>-web-stage-runner` for web-dependent stages, `<prefix>-<source-name>-stage-runner` for MCP-dependent stages). The agent definition declares the required tools — the orchestrator does not need to list tools in the prompt. However, the orchestrator must still: (1) instruct the subagent to perform a lightweight re-validation of external access before starting work, and (2) specify what to do if access is unavailable (report failure, not silently degrade).
 
-**Resumption table**: Build from the artifact list — one row per stage, mapping its output artifact to a "skip this phase" decision.
+**Execution manifest**: The manifest replaces file-presence-based resumption tables as the primary resumption mechanism. Generate the checkpoint and resumption protocol as described in item 8 above. Also generate an execution manifest contract file at `skills/<prefix>/contracts/execution-manifest.md` containing the full JSON schema (see `loop-workspace/artifacts.md`, "Runtime Artifact: Execution Manifest" for the canonical schema). Artifact presence on disk serves as a degraded fallback when the manifest is missing.
 
 ### Step 9: Validate generated output
 
@@ -376,6 +396,7 @@ After generating all files, perform both `/skill-creator`'s validation checklist
 **Pipeline completeness**:
 - [ ] Every stage in `stages.md` has a corresponding file in `skills/<prefix>/stages/`
 - [ ] Every artifact in `artifacts.md` has a corresponding file in `skills/<prefix>/contracts/`
+- [ ] `skills/<prefix>/contracts/execution-manifest.md` exists with the full manifest JSON schema
 - [ ] Every workflow has an orchestrator skill
 - [ ] Every artifact is produced by exactly one stage
 - [ ] Every artifact is consumed by at least one stage (no dead outputs)
@@ -403,6 +424,15 @@ After generating all files, perform both `/skill-creator`'s validation checklist
 - [ ] The orchestrator's own context contains only orchestration state, not stage working memory
 - [ ] Each subagent prompt includes only the stage file, relevant contracts, and input artifact path
 - [ ] Orchestrator's Subagent Types section lists all agent types used
+
+**Execution manifest**:
+- [ ] Orchestrator initializes the manifest on first run with all stages set to `pending`
+- [ ] Orchestrator checkpoints the manifest to disk after every state transition (stage start/complete, gate attempt, loop iteration, human decision)
+- [ ] Orchestrator reads the manifest on invocation and offers resume or fresh start
+- [ ] Resumption skips `complete` stages and restores loop/cascade counters from the manifest
+- [ ] Fan-out stages track per-item status in the manifest's `items[]` array
+- [ ] Human gate decisions are recorded in `decisions[]` and not re-asked on resumption
+- [ ] Fallback to artifact-presence resumption is implemented when the manifest is missing
 
 **Self-containment** (at the pipeline level):
 - [ ] No file references `loop-workspace/` design artifacts or framework docs
@@ -451,14 +481,15 @@ Stage files are instruction documents that orchestrators read at the appropriate
 
 ### Observability
 
-Orchestrator skills should track and report:
-- Gate pass/fail rates
-- Loop iteration counts
-- Artifact snapshots
-- Gate decisions
-- Sink writes (for Emit stages: what was written, to which target, whether it succeeded)
+The execution manifest is the primary observability mechanism. Its timestamps, gate attempt arrays, and loop iteration counts provide a complete run history. Orchestrator skills should also report at the end of each run:
 
-Include a "Pipeline Run Summary" section at the end of each orchestrator run.
+- **Pipeline Run Summary**: stages completed, stages skipped (resumption), stages failed
+- Gate pass/fail rates (derived from `gates[].attempts` in the manifest)
+- Loop iteration counts and whether any loops exhausted their caps
+- Cascade budget utilization
+- Human decisions made during the run
+- Sink writes (for Emit stages: what was written, to which target, whether it succeeded)
+- Total run duration (from manifest `started_at` to final `updated_at`)
 
 ### What Not to Generate
 

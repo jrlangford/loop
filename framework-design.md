@@ -418,6 +418,84 @@ LLM stages are stochastic. The same input, same context, same system prompt can 
 
 **Testing is statistical, not binary.** A deterministic pipeline either works or doesn't. A stochastic pipeline has a *success rate* — it might produce acceptable output 90% of the time and fail 10%. Testing a pipeline means running it multiple times and characterising the distribution of outcomes, not checking a single run. Gate pass rates, loop iteration distributions, and output quality variance are all metrics that matter for pipeline reliability and that a single test run cannot capture.
 
+### 3.10 Execution State and Resumption
+
+A running pipeline maintains two distinct kinds of state:
+
+1. **Artifact state** — the files written to the workspace. These survive across sessions because they're on disk.
+2. **Execution state** — runtime information about the pipeline run itself: which stages completed, which items in a fan-out finished, how many loop iterations elapsed, what cascade budget remains, what decisions the user made at human gates.
+
+Artifact state is durable by construction — every stage writes its output to disk. Execution state, by contrast, lives in the orchestrator's conversation context and vanishes when the session ends. This is a problem for any pipeline that exceeds a single context window, because on resumption the orchestrator can detect which *artifacts* exist but cannot reconstruct *where execution was*.
+
+#### 3.10.1 Why Artifact Presence Is Insufficient
+
+File-presence-based resumption maps artifact existence to phase skip decisions:
+
+```
+transformation.md exists → skip to Phase 2
+stages.md exists → skip to Phase 3
+```
+
+This works for linear pipelines where each phase produces exactly one artifact. It breaks for:
+
+**Fan-out stages.** A stage that produces one artifact per item (e.g., per bounded context, per document, per entity) may complete 4 of 7 items before the session ends. The resumption table sees output files exist and might skip the entire stage — losing 3 items. Or it might re-run the entire stage — wasting work on 4 already-complete items.
+
+**Bounded feedback loops.** A loop with a 3-iteration cap may have completed 2 iterations before the session ends. On resumption, the orchestrator either resets the counter to 0 (allowing 3 more iterations, exceeding the cap) or sees the output artifact exists and skips the loop entirely (missing the iteration that might fix remaining issues).
+
+**Cascade budgets.** A review correction loop with a 10-call budget may have used 6 calls before the session ends. Resumption resets the budget to 10 — the pipeline no longer enforces its own termination bounds.
+
+**Human gate decisions.** A user approves a design choice at a human gate. The session later ends. On resumption, the pipeline re-asks the same question because no record of the approval exists outside the conversation context.
+
+#### 3.10.2 The Execution Manifest
+
+The execution manifest is a JSON file that the orchestrator maintains alongside workspace artifacts. It persists execution state to disk so that resumption can reconstruct the pipeline's exact position.
+
+**Resumption contract — the five fields a manifest must track:**
+
+| Field | What it records | Why resumption needs it |
+|-------|----------------|------------------------|
+| **Stage status** | `pending`, `in_progress`, `complete`, `failed` per stage | Resume from the right stage, don't re-run completed work |
+| **Fan-out item status** | Same status enum per item within a fan-out stage | Resume from the right item, not the stage start |
+| **Loop iteration counts** | How many iterations have elapsed per loop | Don't reset bounded loop counters on session restart |
+| **Cascade budget consumed** | How many calls used per review/correction cycle | Don't reset the budget, preserving termination bounds |
+| **Human decisions** | What the user decided at each human gate, with rationale | Don't re-ask questions the user already answered |
+
+These five fields are the **minimal resumption contract**. A manifest that tracks these can resume any pipeline correctly. Without any one of them, specific pipeline patterns (fan-out, loops, cascades, human gates) break on resumption.
+
+#### 3.10.3 Manifest Lifecycle
+
+**Checkpoint protocol.** The orchestrator updates the manifest and writes it to disk:
+
+- Before starting a stage: set stage status to `in_progress`
+- After completing a stage: set status to `complete`
+- After each item in a fan-out stage: update the item's status
+- After each loop iteration: increment the loop's iteration count
+- After each human decision: append to the decisions array
+- On error: set stage/item status to `failed`, record the error
+
+The manifest is written after every checkpoint, not batched. This is the critical difference from runtime counters that live only in memory.
+
+**Resumption protocol.** On pipeline invocation, the orchestrator:
+
+1. Checks for an existing execution manifest
+2. If found: reads it, presents a status summary, and offers to resume or start fresh
+3. If resuming: skips completed stages, restarts `in_progress` stages (checking for usable partial output), continues fan-out from the first incomplete item, restores loop counters and cascade budgets, skips already-answered human decisions
+4. If starting fresh: archives or deletes the existing manifest
+
+**Relationship to artifact-based resumption.** The execution manifest is the primary resumption source. Artifact presence on disk serves as a **degraded fallback** — if the manifest is missing or corrupted, the orchestrator can still make a best-effort resumption from artifacts, losing only the execution state (loop counts, decisions, etc.).
+
+#### 3.10.4 Multi-Workflow Pipelines
+
+Each workflow has its own execution manifest. In a multi-workflow pipeline, workflows track independent execution state — completing workflow A does not affect workflow B's manifest. Cross-workflow handoffs are validated by checking that the upstream workflow's manifest shows all stages `complete`, not by inspecting its artifacts directly.
+
+#### 3.10.5 Scope
+
+The execution manifest tracks **orchestration-level** state. It does not cover:
+
+- **Stage-internal state.** If a stage needs to checkpoint its own work (e.g., a complex extraction with multiple internal passes), that is the stage's concern, managed within the stage's subagent context — not the orchestrator's manifest.
+- **Artifact versioning.** The manifest records which artifacts were produced, but does not version them. If an artifact is overwritten during a correction loop, the manifest points to the current version.
+- **Distributed execution.** The manifest assumes a single orchestrator. For parallel subagent execution (e.g., fan-out stages running concurrently), the orchestrator updates the manifest after each subagent reports completion.
+
 ---
 
 ## 4. Designing a Pipeline

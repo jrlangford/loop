@@ -168,6 +168,58 @@
 - **Validation**: Every artifact in the workspace appears in either stale_artifacts or unaffected_artifacts. Every stale artifact has a cascade_path traceable from the change_source. Every recommended_stage exists in stages.md.
 - **Reasoning trace**: Full — the designer needs to understand why each artifact is considered stale to decide whether to accept the cascade recommendation
 
+## Runtime Artifact: Execution Manifest
+- **Name**: Execution Manifest
+- **Content**: Orchestration-level execution state for a pipeline run — stage progress, fan-out item status, loop iteration counts, cascade budgets, and human decisions
+- **Format**: JSON file. Path depends on pipeline structure: `<prefix>-workspace/execution-manifest.json` for single-workflow pipelines, `<prefix>-workspace/execution-manifest-<workflow>.json` for multi-workflow pipelines. Each workflow has its own manifest — workflows track independent execution state.
+- **Structure**:
+  - `pipeline_name`: string — which pipeline is running
+  - `workflow_name`: string — which workflow within the pipeline
+  - `run_id`: string — unique identifier for this execution (UUID)
+  - `started_at`: ISO 8601 datetime
+  - `updated_at`: ISO 8601 datetime — last checkpoint timestamp
+  - `stages[]`: array of:
+    - `name`: string — stage name from decomposition
+    - `status`: enum — `pending` | `in_progress` | `complete` | `failed` | `skipped`
+    - `started_at`: ISO 8601 datetime? — when stage execution began
+    - `completed_at`: ISO 8601 datetime? — when stage execution finished
+    - `error`: string? — if failed, what went wrong
+    - `items[]`: array (for fan-out stages only) of:
+      - `id`: string — item identifier (e.g., context name, document ID)
+      - `status`: enum — `pending` | `in_progress` | `complete` | `failed`
+      - `started_at`: ISO 8601 datetime?
+      - `completed_at`: ISO 8601 datetime?
+      - `error`: string?
+  - `gates[]`: array of:
+    - `name`: string — gate name from gate specifications
+    - `attempts[]`: array of:
+      - `attempt`: integer — 1-based
+      - `result`: enum — `pass` | `fail`
+      - `findings_count`: integer
+      - `timestamp`: ISO 8601 datetime
+  - `loops[]`: array of:
+    - `name`: string — loop name from loop specifications
+    - `iteration_count`: integer — how many iterations have elapsed
+    - `cap`: integer — max iterations from loop spec
+    - `exhausted`: boolean — true if cap reached
+  - `cascade_budgets[]`: array of:
+    - `context`: string — which review/correction cycle
+    - `total`: integer — budget from spec
+    - `used`: integer — calls consumed so far
+    - `cycle`: integer — which review cycle
+  - `decisions[]`: array of:
+    - `id`: string — unique decision identifier
+    - `stage`: string — which stage prompted this
+    - `question`: string — what was asked
+    - `answer`: string — what the user decided
+    - `rationale`: string? — why (if provided)
+    - `timestamp`: ISO 8601 datetime
+- **Identity fields**: `pipeline_name`, `workflow_name`, `run_id`
+- **Omitted**: Artifact content (the manifest records status, not data), stage-internal state (managed within subagent context), artifact versioning (the manifest points to current versions only)
+- **Validation**: Every stage in the pipeline appears in `stages[]`. Every gate in the workflow appears in `gates[]`. Every loop in the workflow appears in `loops[]`. `updated_at` is always >= `started_at`. Stage status transitions are valid (`pending` → `in_progress` → `complete`|`failed`; `failed` → `in_progress` on retry).
+- **Reasoning trace**: None — the manifest is a state record, not inferential output
+- **Note**: This is a **runtime artifact**, not a design artifact. Design artifacts describe the pipeline; the execution manifest describes a specific run. Multiple runs of the same pipeline each have their own manifest. The resumption contract (the five fields that enable correct resumption) is defined in `framework-design.md` Section 3.10.2. The full schema here includes observability fields (timestamps, run_id, gate attempts) that generated orchestrators produce but that are not required for resumption.
+
 ## Pipeline Input (add-workflow): Workspace Path
 - **Name**: Pipeline-Input-Directory
 - **Content**: Reference to the existing populated loop-workspace directory that the pipeline will extend
