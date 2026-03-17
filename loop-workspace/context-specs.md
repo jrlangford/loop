@@ -159,3 +159,103 @@ Subagent with fresh context. Sees all workspace artifacts and review instruction
 
 ### Isolation Model
 Subagent with fresh context. Sees all workspace artifacts, the modification request, and staleness analysis instructions. Like Review, this stage legitimately needs the full workspace to trace connections.
+
+## Stage: Extract-Existing-Design
+
+### Context Window Contents
+| Component | Include? | Content |
+|-----------|----------|---------|
+| Input artifact | No | Pipeline input is a path reference; the stage reads source files directly |
+| System prompt | Yes | Extraction role — index existing stages, artifacts, context specs, and workflow configurations |
+| Examples | No | — |
+| Domain reference | Yes | Existing-Design-Inventory output contract (field structure) |
+| Upstream history | No | First stage — no upstream |
+| Reasoning trace | No | — |
+
+### Channel Assessment
+- **Signal**: Workspace file contents + inventory output schema
+- **Noise**: Framework theory, new workflow description, gate/loop design rationale
+- **Information rate**: Scales with existing pipeline size. For large pipelines, process file-by-file.
+
+### Isolation Model
+Subagent with fresh context. Receives the stage file, the output contract, and source-read access to `loop-workspace/`. No other artifacts loaded.
+
+## Stage: Analyze-Reuse
+
+### Context Window Contents
+| Component | Include? | Content |
+|-----------|----------|---------|
+| Input artifact | Yes | Existing-Design-Inventory + New-Workflow-Description |
+| System prompt | Yes | Reuse analysis role — compare stage contracts and domain assumptions against new workflow requirements |
+| Examples | No | — |
+| Domain reference | Yes | Reuse-Analysis-Report output contract |
+| Upstream history | No | Inventory carries all needed structural information |
+| Reasoning trace | No | — |
+
+### Channel Assessment
+- **Signal**: Inventory (stage summaries, domain assumptions) + workflow description (name, purpose, requirements)
+- **Noise**: Raw workspace files, full artifact contract details, gate/loop configurations
+- **Information rate**: Moderate — bounded by number of existing stages. Process one verdict at a time.
+
+### Isolation Model
+Subagent with fresh context. Receives the stage file, the output contract, the inventory artifact, and the workflow description.
+
+## Stage: Define-New-Stages
+
+### Context Window Contents
+| Component | Include? | Content |
+|-----------|----------|---------|
+| Input artifact | Yes | Reuse-Analysis-Report (capability gaps) + Existing-Design-Inventory (for collision avoidance) |
+| System prompt | Yes | Stage definition role — convert gaps into stage specs and artifact contracts |
+| Examples | No | — |
+| Domain reference | Yes | New-Stage-Definitions output contract |
+| Upstream history | No | Reuse report carries per-verdict rationale |
+| Reasoning trace | No | — |
+
+### Channel Assessment
+- **Signal**: Capability gaps + existing names (for collision avoidance)
+- **Noise**: Reuse-as-is verdicts, full gate/loop configs, raw workflow description
+- **Information rate**: Moderate — one gap at a time.
+
+### Isolation Model
+Subagent with fresh context. Receives the stage file, the output contract, the reuse analysis, and the inventory.
+
+## Stage: Compose-Workflow
+
+### Context Window Contents
+| Component | Include? | Content |
+|-----------|----------|---------|
+| Input artifact | Yes | Reuse-Analysis-Report + New-Stage-Definitions + Existing-Design-Inventory |
+| System prompt | Yes | Workflow composition role — assemble gates and loops, check gate compatibility on shared stages |
+| Examples | No | — |
+| Domain reference | Yes | New-Workflow-Configuration output contract |
+| Upstream history | No | All needed information is in the three input artifacts |
+| Reasoning trace | No | — |
+
+### Channel Assessment
+- **Signal**: Reused stages + new stages + existing workflow configs (for gate compatibility)
+- **Noise**: Full artifact contract field definitions, context specs, raw workspace files
+- **Information rate**: Moderate-to-high — highest fan-in (3 artifacts). Work through gates first, then loops. Use inventory summary-level fields.
+
+### Isolation Model
+Subagent with fresh context. Receives the stage file, the output contract, and all three input artifacts. Channel capacity risk — mitigate by relying on summary-level fields.
+
+## Stage: Validate-Consistency
+
+### Context Window Contents
+| Component | Include? | Content |
+|-----------|----------|---------|
+| Input artifact | Yes | Existing-Design-Inventory + New-Stage-Definitions + New-Workflow-Configuration |
+| System prompt | Yes | Validation role — run naming, reference-integrity, gate-compatibility, and context-spec-compatibility checks |
+| Examples | No | — |
+| Domain reference | Yes | Validation-Report output contract |
+| Upstream history | No | All needed information is in input artifacts and source files |
+| Reasoning trace | No | — |
+
+### Channel Assessment
+- **Signal**: Three input artifacts + existing workflow directories (source access for full-fidelity cross-workflow comparison)
+- **Noise**: Raw workflow description, reuse analysis verdicts, framework theory
+- **Information rate**: High — highest total context load. Process checks sequentially by scope category.
+
+### Isolation Model
+Subagent with fresh context. Receives the stage file, the output contract, all three input artifacts, and source-read access to existing workflow directories. Channel capacity risk — mitigate by processing validation checks sequentially by scope.

@@ -167,3 +167,87 @@
 - **Omitted**: The actual re-execution — the orchestrator decides what to run based on the map and user input
 - **Validation**: Every artifact in the workspace appears in either stale_artifacts or unaffected_artifacts. Every stale artifact has a cascade_path traceable from the change_source. Every recommended_stage exists in stages.md.
 - **Reasoning trace**: Full — the designer needs to understand why each artifact is considered stale to decide whether to accept the cascade recommendation
+
+## Pipeline Input (add-workflow): Workspace Path
+- **Name**: Pipeline-Input-Directory
+- **Content**: Reference to the existing populated loop-workspace directory that the pipeline will extend
+- **Structure**:
+  - `workspace_path`: string — absolute or relative path to the existing `loop-workspace/` directory
+- **Identity fields**: `workspace_path`
+- **Omitted**: Directory contents — the Extract stage reads them directly via source access
+- **Validation**: Path exists and contains at least `stages.md`, `artifacts.md`, `context-specs.md`, and `transformation.md`. May optionally contain a `workflows/` subdirectory.
+- **Reasoning trace**: None — simple path reference
+
+## Pipeline Input (add-workflow): Workflow Description
+- **Name**: New-Workflow-Description
+- **Content**: The user's natural-language description of the new workflow to be added
+- **Structure**:
+  - `workflow_name`: string — kebab-case identifier (e.g., `code-review`)
+  - `description`: string — free-text purpose and desired behavior, max 500 words
+  - `key_requirements`: string[] — ordered list of concrete requirements
+- **Identity fields**: `workflow_name`
+- **Omitted**: Implementation details, gate/loop preferences — downstream concerns
+- **Validation**: `workflow_name` is non-empty kebab-case. `description` is non-empty. `key_requirements` has at least one entry.
+- **Reasoning trace**: None — user-provided input
+
+## Artifact: Extract-Existing-Design → Analyze-Reuse, Define-New-Stages, Compose-Workflow, Validate-Consistency
+- **Name**: Existing-Design-Inventory
+- **Content**: Structured index of all stages, artifacts, context specs, and workflow configurations in the existing pipeline
+- **Structure**:
+  - `stages[]`: array of `{name, category, intent, input_contract_summary, output_contract_summary, domain_assumptions[]}`
+  - `artifacts[]`: array of `{name, boundary, field_names[]}`
+  - `context_specs[]`: array of `{stage_name, budget_summary}`
+  - `workflows[]`: array of `{name, gate_count, loop_count, stage_references[]}`
+- **Identity fields**: `stages[].name`, `artifacts[].name`, `workflows[].name`
+- **Omitted**: Full artifact field definitions, full gate criteria text, full loop configuration details — only summaries needed for reuse analysis and collision detection
+- **Validation**: Every name is unique within its array. All `workflows[].stage_references` resolve to `stages[].name`.
+- **Reasoning trace**: None — structural extraction, not inferential
+
+## Artifact: Analyze-Reuse → Define-New-Stages, Compose-Workflow
+- **Name**: Reuse-Analysis-Report
+- **Content**: Per-stage reuse verdict for the new workflow plus identified capability gaps
+- **Structure**:
+  - `workflow_name`: string — reference to target workflow
+  - `stage_verdicts[]`: array of `{stage_name, verdict (reuse-as-is | not-applicable), rationale}`
+  - `capability_gaps[]`: array of `{gap_id, description, requirement_refs[]}`
+- **Identity fields**: `workflow_name`, `stage_verdicts[].stage_name`
+- **Omitted**: Suggested stage designs for gaps — that is Define-New-Stages' concern. No partial-reuse verdicts — stages are reused as-is or not applicable.
+- **Validation**: Every existing stage appears exactly once in `stage_verdicts`. Every `gap_id` is unique. At least one entry exists across reused stages or capability gaps.
+- **Reasoning trace**: Summary — reuse decisions are judgment calls; rationale captured per-verdict
+
+## Artifact: Define-New-Stages → Compose-Workflow, Validate-Consistency, orchestrator Write Phase
+- **Name**: New-Stage-Definitions
+- **Content**: Fully specified new stages and their artifact contracts, ready for append to shared pipeline artifacts
+- **Structure**:
+  - `new_stages[]`: array of `{name, category, intent, input, output, sources, sinks, fills_gap}`
+  - `new_artifact_contracts[]`: array of `{name, boundary, content, structure, identity_fields[], omitted, validation, reasoning_trace}`
+  - `new_context_specs[]`: array of `{stage_name, budget}`
+- **Identity fields**: `new_stages[].name`, `new_artifact_contracts[].name`
+- **Omitted**: Gate positions, loop definitions — workflow-scoped, handled by Compose-Workflow
+- **Validation**: No name collisions with existing stages/artifacts. Every `fills_gap` references a valid `gap_id`. Emit-category stages include idempotency markers.
+- **Reasoning trace**: None — structural definitions derived from gap specifications
+
+## Artifact: Compose-Workflow → Validate-Consistency, orchestrator Write Phase
+- **Name**: New-Workflow-Configuration
+- **Content**: The new workflow's gate and loop definitions, referencing reused and newly defined stages
+- **Structure**:
+  - `workflow_name`: string
+  - `gates[]`: array of `{name, position, criteria[], on_fail}`
+  - `loops[]`: array of `{name, from_stage, to_stage, trigger, max_iterations, loop_type}`
+  - `transformation_update`: string or null
+- **Identity fields**: `workflow_name`, `gates[].name`, `loops[].name`
+- **Omitted**: Stage definitions and artifact contracts — shared-level concerns
+- **Validation**: All stage references resolve. `max_iterations` is positive. No gate name collides with existing workflows.
+- **Reasoning trace**: Summary — gate criteria and loop triggers involve judgment
+
+## Artifact: Validate-Consistency → orchestrator Write Phase
+- **Name**: Validation-Report
+- **Content**: Cross-workflow consistency check results covering the full extended design
+- **Structure**:
+  - `overall_status`: enum — `pass` | `fail`
+  - `checks_performed[]`: array of `{check_name, scope (naming | gate-compatibility | reference-integrity | context-spec-compatibility), status, details}`
+  - `inconsistencies[]`: array of `{check_name, severity (error | warning), description, affected_elements[], suggested_fix}`
+- **Identity fields**: `checks_performed[].check_name`
+- **Omitted**: Corrected versions of failing elements — correction is an upstream concern via feedback loops
+- **Validation**: `overall_status` is `fail` iff at least one check status is `fail`. Every inconsistency references a check in `checks_performed`.
+- **Reasoning trace**: Summary — validation judgments require rationale, captured in `details` and `description` fields

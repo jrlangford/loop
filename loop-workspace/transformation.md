@@ -2,7 +2,7 @@
 
 ## Task
 
-Take a task description and produce a complete, internally consistent Loop pipeline design — with configurable human interaction levels and graph-aware cascade detection for edits.
+Take a task description and produce a complete, internally consistent Loop pipeline design — with configurable human interaction levels, graph-aware cascade detection for edits, and incremental workflow addition to existing designs.
 
 ## Input
 
@@ -10,7 +10,9 @@ Take a task description and produce a complete, internally consistent Loop pipel
 
 **Edit workflow**: An existing `loop-workspace/` with design artifacts, plus a user-specified modification (changed stage, new feedback loop, removed gate, etc.).
 
-**Both workflows**: A human interaction level setting:
+**Add-workflow**: An existing `loop-workspace/` with completed design artifacts, plus a natural-language description of a new workflow to add (name, purpose, key requirements).
+
+**All workflows**: A human interaction level setting:
 - **Minimal** (default): Human review only on critical issues that require clearer definition (ambiguous decomposition boundaries, conflicting quality criteria, unclear domain requirements)
 - **Per-stage**: Human review after every stage output
 - **None**: Fully automated, no human checkpoints

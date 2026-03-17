@@ -51,6 +51,16 @@
 
 Artifact files in the workspace use kebab-case markdown filenames. Each file follows the schema defined in its corresponding contract under `loop/contracts/`.
 
+## Add-Workflow Conventions
+
+When running `/loop:add-workflow`, intermediate artifacts are stored in the new workflow's directory (`loop-workspace/workflows/<workflow-name>/`) alongside the final gate and loop files. Git provides rollback safety — no separate staging directory needed.
+
+- `loop-workspace/workflows/<name>/inventory.md` — Existing-Design-Inventory
+- `loop-workspace/workflows/<name>/reuse-analysis.md` — Reuse-Analysis-Report
+- `loop-workspace/workflows/<name>/new-stages.md` — New-Stage-Definitions
+- `loop-workspace/workflows/<name>/workflow-config.md` — New-Workflow-Configuration
+- `loop-workspace/workflows/<name>/validation.md` — Validation-Report
+
 ## Cascade Budget
 
 Max 10 additional inference calls per review correction cycle (stages + gates + loops triggered by the cascade). Resets at the start of each review cycle.

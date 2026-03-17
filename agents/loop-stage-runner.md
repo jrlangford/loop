@@ -1,6 +1,6 @@
 ---
 name: loop-stage-runner
-description: Execute a Loop design pipeline stage in isolated context. Use for stage delegation during /loop:design, /loop:edit, or /loop:reverse workflows.
+description: Execute a Loop design pipeline stage in isolated context. Use for stage delegation during /loop:design, /loop:edit, /loop:reverse, or /loop:add-workflow workflows.
 tools: Read, Write, Edit, Glob, Grep
 model: inherit
 ---

@@ -2,7 +2,7 @@
 
 ## Pipeline Overview
 Take a task description and produce a complete, internally consistent Loop pipeline design — with configurable human interaction and graph-aware cascade detection for edits.
-8 stages total.
+13 stages total (8 design/edit + 5 add-workflow).
 
 ## Stages
 
@@ -76,3 +76,48 @@ Take a task description and produce a complete, internally consistent Loop pipel
 - **Sources**: None
 - **Sinks**: None
 - **Complexity**: Must trace both forward (stage dependencies) and backward (feedback loop connections, gate failure routes). A new feedback loop connecting to a previously unconnected stage means that stage's artifact spec, context budget, and definition may all need updating. Must distinguish structural changes (added/removed stages) from content changes (modified criteria) — different cascade depths.
+
+### Stage 9: Extract-Existing-Design
+- **Category**: Extract
+- **Intent**: Index the existing pipeline's stages, artifacts, context specs, and workflow configurations
+- **Input**: Populated `loop-workspace/` directory (all stage-level artifacts and existing workflow directories)
+- **Output**: Structured inventory of existing stages (names, categories, input/output contracts), existing artifacts, existing context specs, and existing workflow gate/loop configurations
+- **Sources**: Existing `loop-workspace/` directory contents (stages.md, artifacts.md, context-specs.md, workflows/*/gates.md, workflows/*/loops.md)
+- **Sinks**: None
+- **Complexity**: Must capture enough contract detail per stage for downstream reuse analysis — not just names, but input/output shapes and domain assumptions. Volume scales with existing pipeline size.
+
+### Stage 10: Analyze-Reuse
+- **Category**: Evaluate
+- **Intent**: Assess each existing stage's applicability to the new workflow's requirements
+- **Input**: Existing design inventory (from Extract-Existing-Design) and the new workflow's natural-language description
+- **Output**: Reuse analysis report: per-stage reuse verdict (reuse as-is, not applicable) with rationale, plus list of capability gaps requiring new stages
+- **Sources**: None
+- **Sinks**: None
+- **Complexity**: This is the core judgment call. Each reuse decision requires comparing the new workflow's semantic needs against the existing stage's contract shapes and domain assumptions. Incorrect classifications here propagate downstream. Findings must be presented for human review before proceeding.
+
+### Stage 11: Define-New-Stages
+- **Category**: Transform
+- **Intent**: Specify new stages needed to fill capability gaps identified in the reuse analysis
+- **Input**: Reuse analysis report (capability gaps) and existing design inventory (to avoid naming collisions)
+- **Output**: New stage definitions (name, category, intent, input, output, context specs) and corresponding new artifact contracts, formatted for append to shared artifacts
+- **Sources**: None
+- **Sinks**: None
+- **Complexity**: Must respect the append-only constraint — new entries must not collide with existing names or create ambiguous references in the dependency graph. Each new stage must follow the one-verb heuristic and fit cleanly into the existing artifact dependency structure.
+
+### Stage 12: Compose-Workflow
+- **Category**: Synthesise
+- **Intent**: Assemble the new workflow's gates and loops from reused and newly defined stages
+- **Input**: Reuse analysis report (reused stages), new stage definitions, and existing design inventory
+- **Output**: New workflow directory content: gates.md and loops.md for the new workflow
+- **Sources**: None
+- **Sinks**: None
+- **Complexity**: Gate criteria on shared stages must be compatible with any existing workflow's gate criteria for those same stages. Loop definitions must reference only stages that actually exist (reused or newly added). May also need to update transformation.md scope if the new workflow broadens the pipeline's purpose.
+
+### Stage 13: Validate-Consistency
+- **Category**: Evaluate
+- **Intent**: Verify cross-workflow consistency across all workflows including the new one
+- **Input**: Full extended design: existing design inventory, new stage definitions, new workflow gates/loops, and all existing workflow configurations
+- **Output**: Validation report: pass/fail with list of inconsistencies (naming collisions, conflicting gate criteria on shared stages, dangling references, incompatible context specs)
+- **Sources**: Existing `loop-workspace/` workflow directories (for cross-workflow comparison)
+- **Sinks**: None
+- **Complexity**: Requires holistic reasoning about the full set of gates, loops, and context specs simultaneously. Conflicting gate criteria on shared stages may be subtle. If inconsistencies are found, this stage produces actionable findings that drive refinement upstream.

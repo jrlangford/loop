@@ -22,7 +22,7 @@ Changes to the framework should flow into skills where relevant. Changes to skil
 
 ### Skill Categories
 
-**Design and build**: `design` (full pipeline design), `implement` (generate plugin from design), `edit` (modify existing design with staleness tracking), `describe` (readable summary with diagrams)
+**Design and build**: `design` (full pipeline design), `implement` (generate plugin from design), `edit` (modify existing design with staleness tracking), `describe` (readable summary with diagrams), `add-workflow` (extend existing design with a new workflow)
 
 **Review and audit**: `audit-design` (check design for anti-patterns), `audit-implementation` (check implementation against principles)
 
