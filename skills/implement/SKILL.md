@@ -192,6 +192,15 @@ a stage file, contract files, an input artifact path, and an output artifact pat
 Execute the stage instructions precisely, read the input artifact, apply the
 transformation, and write the output artifact conforming to the output contract.
 Do not access files beyond those specified in your prompt.
+
+If you cannot complete the stage (missing input, ambiguous instructions, or
+unexpected data), do not guess. Instead, end your response with a structured
+escalation block so the orchestrator can act on it:
+
+## ESCALATION
+- **reason**: <what went wrong>
+- **blocked_on**: <what is missing or ambiguous>
+- **suggested_action**: <what the orchestrator or user could do to unblock>
 ```
 
 **`agents/<prefix>-gate-checker.md`** — Semantic gate evaluator:
@@ -208,6 +217,15 @@ You are a semantic gate evaluator for the <prefix> pipeline. You receive an
 artifact to evaluate and validation criteria. Evaluate the artifact against the
 criteria and report pass or fail with specific evidence. You are deliberately
 isolated from the context that produced this artifact. Do not modify any files.
+
+If a criterion is ambiguous or you cannot evaluate it with confidence, do not
+guess. Instead, include a structured escalation block so the orchestrator can
+present the issue to the user:
+
+## ESCALATION
+- **reason**: <what is ambiguous or unevaluable>
+- **criteria**: <which gate criterion is affected>
+- **suggested_action**: <what clarification is needed>
 ```
 
 #### Conditionally generate based on preconditions:
@@ -309,9 +327,11 @@ For each workflow in `loop-workspace/workflows/`, use `/skill-creator` to genera
    - After the subagent completes, the orchestrator reads the output artifact from `<prefix>-workspace/` to verify it exists and proceed.
    - Run gate checks after each stage. Schema and metric gates run inline. **Semantic gates must run in the `<prefix>-gate-checker` subagent** (or `<prefix>-web-gate-checker` if web verification is needed) with clean context containing only the artifact, validation criteria, and (where relevant) the original source material.
    - Handle loop feedback: on gate failure, re-run the stage subagent with the gate feedback appended to its prompt.
-7. **Error handling**: stage failure, human escalation, pipeline abort. For Emit stages, include sink failure handling.
+7. **Error handling**: stage failure, human escalation, pipeline abort. For Emit stages, include sink failure handling. Specifically:
+   - When a subagent response contains an `## ESCALATION` block, the orchestrator must use `AskUserQuestion` to present the escalation reason and suggested action to the user. Offer options like "Provide clarification", "Skip this stage", or "Abort pipeline". Feed the user's response back into the subagent retry.
+   - When a feedback loop's cascade budget is exhausted, use `AskUserQuestion` to present which corrections completed and which were cut short, and let the user decide whether to continue, accept the current state, or abort.
 8. **Resumption table**: maps output artifacts to phases — if an artifact already exists in `<prefix>-workspace/`, the corresponding phase can be skipped.
-9. **Guidance**: orchestrator-specific rules (delegate each stage to the appropriate agent for context isolation, run semantic gates in `<prefix>-gate-checker` subagents, gates are checkpoints not bottlenecks, track degradation, preserve workspace, report progress)
+9. **Guidance**: orchestrator-specific rules (delegate each stage to the appropriate agent for context isolation, run semantic gates in `<prefix>-gate-checker` subagents, gates are checkpoints not bottlenecks, track degradation, preserve workspace, report progress). Include this human interaction rule: "Subagents cannot interact with the user — they return results to the orchestrator. When a subagent reports failure or includes an `## ESCALATION` block, the orchestrator is responsible for presenting the situation to the user via `AskUserQuestion` and routing the user's decision back into the pipeline (retry with feedback, skip, or abort)."
 
 #### Orchestrator Mapping Rules
 
@@ -324,7 +344,7 @@ For each workflow in `loop-workspace/workflows/`, use `/skill-creator` to genera
 | **Identity** | Verify specific fields haven't changed from upstream |
 | **Semantic** | Run a separate LLM evaluation in clean context |
 | **Consensus** | Run multiple independent evaluations, compare results |
-| **Human** | Pause and present the artifact to the user for review and decision |
+| **Human** | Use `AskUserQuestion` to present the artifact summary, gate criteria, and the specific concern to the user. Offer options appropriate to the context (e.g., "Approve", "Reject — needs changes", "Skip with warning"). Include the artifact workspace path so the user can inspect it. On rejection, feed the user's notes back into the feedback loop as gate failure feedback. |
 
 **Loops → feedback sections**: Each loop becomes a feedback subsection after its gate. Include:
 - Trigger condition (what gate failure or signal starts the loop)

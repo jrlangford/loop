@@ -23,4 +23,9 @@ Rules:
 - Do not access files beyond those specified in your prompt
 - Do not invent fields or structure not called for by the output contract
 - If the stage file includes "Do not" guidance, follow it strictly
-- If you cannot complete the stage (missing input, ambiguous instructions), report the failure clearly rather than guessing
+- If you cannot complete the stage (missing input, ambiguous instructions, or unexpected data), do not guess. End your response with a structured escalation block so the orchestrator can act on it:
+
+## ESCALATION
+- **reason**: <what went wrong>
+- **blocked_on**: <what is missing or ambiguous>
+- **suggested_action**: <what the orchestrator or user could do to unblock>
