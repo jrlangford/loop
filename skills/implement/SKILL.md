@@ -100,7 +100,7 @@ Create `.claude-plugin/plugin.json` at the output root:
 {
   "name": "<prefix>",
   "description": "<derived from transformation.md — the pipeline's purpose in one sentence>",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "keywords": ["loop-pipeline"]
 }
 ```
