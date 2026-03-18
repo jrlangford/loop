@@ -193,9 +193,32 @@ For each stale artifact in pipeline order:
    - PASS or PASS_WITH_WARNINGS → edit is complete
    - FAIL with actionable errors → apply review correction loop (re-run the indicated stages within cascade budget, then re-review)
 
-## Resumption Table
+## Execution Manifest
 
-When re-invoked, check for edit-specific artifacts to determine where to resume:
+Maintain an execution manifest at `loop-workspace/execution-manifest-edit.json`. The manifest persists execution state across sessions.
+
+**Initialization** (on first run): Create the manifest with:
+- `pipeline_name`: `"loop-edit"`
+- `workflow_name`: `"edit"`
+- `run_id`: generate a UUID
+- `started_at`: current timestamp
+- `stages`: entries for `apply-modification`, `map-staleness`, `selective-re-execution`, `review-design`, all set to `pending`. The `selective-re-execution` stage includes an `items[]` array tracking per-artifact re-execution status.
+- `gates`: empty array
+- `loops`: entries for `staleness-map-correction` (cap 2), `review-correction` (cap 3)
+- `cascade_budgets`: `[{ "context": "review-correction", "total": 10, "used": 0, "cycle": 0 }]`
+- `decisions`: empty array
+
+**Checkpoint protocol**: Same as `/loop:design` — update and write to disk after every state transition (phase start/complete, gate attempt, loop iteration, cascade call, human decision, error). For the selective re-execution phase, update per-item status in `items[]` as each stale artifact is re-executed.
+
+## Resumption
+
+The execution manifest is the primary resumption mechanism. On invocation, check for an existing manifest at `loop-workspace/execution-manifest-edit.json`.
+
+- **If manifest found**: Read it. Present status summary (which phases complete, which stale artifacts re-executed, loop counts, cascade budget). Ask: "Resume from [next incomplete phase/item], or start fresh?" If resuming, restore all state. For the selective re-execution phase, skip items with `status: complete` and continue from the first `pending` or `in_progress` item.
+- **If no manifest but edit artifacts exist**: Fall back to artifact-presence resumption. Warn about lost execution state.
+- **If starting fresh**: Rename existing manifest to `execution-manifest-edit.<timestamp>.json`.
+
+**Fallback** (no manifest): Use artifact presence:
 
 | Artifact | If present, resume from |
 |----------|------------------------|
@@ -204,25 +227,28 @@ When re-invoked, check for edit-specific artifacts to determine where to resume:
 | `staleness-map.md` + all stale artifacts refreshed | Phase 4 (Review) |
 | `review.md` with PASS/PASS_WITH_WARNINGS | Edit already complete |
 
-Present the current state and ask: "Continue from [next phase], or start fresh?"
+Warn: "No execution manifest found. Resuming from artifact presence — loop iteration counts, cascade budgets, re-execution progress, and human decisions could not be restored."
 
 ## Error Handling
 
 - **Stage failure**: Present the error to the user. Offer to retry the failed stage or abort. The workspace preserves all completed artifacts — partial re-execution progress is not lost.
-- **Cascade budget enforcement**: Track inference calls within each review correction cycle. Max 10 additional calls (stages + gates + loops triggered by the cascade) per cycle. Reset the counter at the start of each review cycle. If the budget is exhausted mid-cycle, stop the cascade and present remaining issues to the user.
+- **Cascade budget enforcement**: Track inference calls in the manifest's `cascade_budgets[]`. Max 10 additional calls (stages + gates + loops triggered by the cascade) per cycle. Reset `used` to 0 and increment `cycle` at the start of each review cycle. If the budget is exhausted mid-cycle, stop the cascade and present remaining issues to the user. The budget persists across sessions — interruption does not reset it.
 - **Human escalation**: When a gate escalates to human, present the issue clearly with the artifact and the specific problem. Wait for the user's decision before proceeding.
-- **Pipeline abort**: If the user chooses to abort, the workspace is preserved. The staleness map and any partially re-executed artifacts remain. Re-invoking `/loop:edit` will detect existing state and offer to resume.
+- **Pipeline abort**: If the user chooses to abort, the workspace and execution manifest are preserved. The manifest records exactly which stale artifacts were re-executed and where execution stopped. Re-invoking `/loop:edit` will read the manifest and offer precise resumption.
 
 ## Pipeline Run Summary
 
-After completion, present:
+After completion, derive the summary from the execution manifest and report:
 - **Modification applied**: What changed and where
 - **Staleness map**: How many artifacts were flagged stale vs. unaffected
-- **Re-executed stages**: Which stages ran, with gate results and loop iteration counts
+- **Re-executed stages**: Which stages ran, with gate results and loop iteration counts (from manifest `gates[]` and `loops[]`)
 - **Skipped stages**: Which stages were not re-executed (and why — unaffected)
+- **Re-execution item progress**: Per-artifact status from the manifest's `items[]` array
+- **Cascade budget**: Calls used per review cycle (from `cascade_budgets[]`)
+- **Human decisions**: Decisions made during the run (from `decisions[]`)
 - **Review verdict**: PASS, PASS_WITH_WARNINGS, or FAIL with details
 - **Warnings**: Any missed staleness detected during review, any user overrides to the staleness map
-- **Cost**: Total inference calls (staleness mapping + re-execution + review)
+- **Total run duration**: From manifest `started_at` to final `updated_at`
 
 ## Guidance
 

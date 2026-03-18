@@ -52,7 +52,11 @@ Collect from the user before starting:
 
 ## Preconditions
 
-Check whether `loop-workspace/` already contains artifacts. If artifacts exist, present the resumption table (see Resumption Table below) and ask the user whether to resume from the next incomplete phase or start fresh. If starting fresh, confirm before deleting existing artifacts.
+Check for an existing execution manifest at `loop-workspace/execution-manifest.json` (or `execution-manifest-<workflow-name>.json`).
+
+- **If manifest found**: Read it. Present a status summary (which phases complete, where it stopped, loop iteration counts, any errors). Ask: "Resume from [next incomplete phase], or start fresh?" If resuming, restore all state from the manifest. If starting fresh, rename the manifest to `execution-manifest[-<workflow>].<timestamp>.json` and confirm before deleting existing workspace artifacts.
+- **If no manifest but workspace artifacts exist**: Fall back to artifact-presence resumption (check which output files exist, skip those phases). Warn the user that execution state (loop counts, cascade budgets, decisions) could not be restored.
+- **If no workspace artifacts**: Proceed with a fresh run.
 
 No external dependencies are required.
 
@@ -67,14 +71,33 @@ No external dependencies are required.
 
 Create `loop-workspace/` and `loop-workspace/workflows/<workflow-name>/` if they do not exist.
 
-### State Tracking
+### Execution Manifest
 
-Maintain these counters across the pipeline run:
+Maintain an execution manifest at `loop-workspace/execution-manifest.json` (single workflow) or `loop-workspace/execution-manifest-<workflow-name>.json` (multi-workflow). The manifest persists execution state across sessions.
 
-- Per-gate: pass/fail counts, retry counts
-- Per-loop: iteration counts, degradation signals per iteration
-- Cascade budget for review correction: inference calls remaining (resets to 10 each review cycle)
-- Re-grounding fired: boolean (Gate 4 can only fire once)
+**Initialization** (on first run): Create the manifest with:
+- `pipeline_name`: `"loop-design"`
+- `workflow_name`: the user-provided workflow name
+- `run_id`: generate a UUID
+- `started_at`: current timestamp
+- `stages`: one entry per phase (`define-transformation`, `decompose-stages`, `specify-artifacts`, `budget-context`, `place-gates`, `design-feedback`, `review-design`), all set to `pending`
+- `gates`: empty array (populated as gates are attempted)
+- `loops`: entries for each loop (`transformation-refinement`, `decomposition-correction`, `contract-correction`, `re-grounding-correction`, `gate-correction`, `review-correction`), each with `iteration_count: 0` and the appropriate `cap`
+- `cascade_budgets`: `[{ "context": "review-correction", "total": 10, "used": 0, "cycle": 0 }]`
+- `decisions`: empty array
+
+**Checkpoint protocol**: Update the manifest and write to disk:
+- Before starting a phase: set its stage status to `in_progress`, record `started_at`
+- After completing a phase: set status to `complete`, record `completed_at`
+- After each gate attempt: append to the gate's `attempts` array
+- After each loop iteration: increment the loop's `iteration_count`
+- After each cascade call in review correction: increment `cascade_budgets[0].used`
+- After each human decision: append to `decisions` array
+- On error: set stage status to `failed`, record the error
+- Always update `updated_at` on every write
+
+Also track in the manifest (as custom fields):
+- `re_grounding_fired`: boolean (Gate 4 can only fire once)
 
 ---
 
@@ -311,9 +334,18 @@ If there are multiple workflows in `loop-workspace/workflows/`, run a cross-work
 
 ---
 
-## Resumption Table
+## Resumption
 
-When invoked, check `loop-workspace/` for existing artifacts:
+The execution manifest is the primary resumption mechanism. On resumption:
+
+- Skip phases with `status: complete` in the manifest
+- For `in_progress` phases: check if the output artifact exists and is valid — if yes, mark complete in the manifest and skip; if no, restart the phase
+- Restore loop iteration counts from the manifest (don't reset to 0)
+- Restore cascade budget from the manifest (don't reset to full)
+- Don't re-ask human decisions already recorded in `decisions[]`
+- Restore `re_grounding_fired` from the manifest
+
+**Fallback** (no manifest, workspace artifacts exist): Use artifact presence to determine the resume point:
 
 | Artifact | If present, skip to |
 |---|---|
@@ -324,7 +356,7 @@ When invoked, check `loop-workspace/` for existing artifacts:
 | `loop-workspace/workflows/<name>/loops.md` | Phase 7 |
 | `loop-workspace/workflows/<name>/review.md` | Pipeline complete |
 
-Use the latest present artifact to determine the resumption point. Present the current state and ask: "Resume from [next phase], or start fresh?"
+Warn: "No execution manifest found. Resuming from artifact presence — loop iteration counts, cascade budgets, and human decisions could not be restored."
 
 ## Error Handling
 
@@ -332,19 +364,21 @@ Use the latest present artifact to determine the resumption point. Present the c
 
 **Human escalation**: When a gate escalates to human review, present the artifact and the specific problem clearly. Wait for the user's decision: fix and retry, accept with warning, or abort.
 
-**Pipeline abort**: Preserve the workspace as-is. Re-invoking `/loop:design` will detect existing artifacts and offer resumption.
+**Pipeline abort**: Preserve the workspace and execution manifest as-is. The manifest records exactly where execution stopped. Re-invoking `/loop:design` will read the manifest and offer precise resumption.
 
-**Cascade budget exhaustion**: If a review correction cycle exhausts the 10-call cascade budget before all corrections are applied, stop corrections, re-run Phase 7 review on whatever was corrected, and report remaining issues.
+**Cascade budget exhaustion**: If a review correction cycle exhausts the 10-call cascade budget before all corrections are applied, stop corrections, re-run Phase 7 review on whatever was corrected, and report remaining issues. The manifest's `cascade_budgets[].used` field persists across sessions — if the pipeline is interrupted during a cascade, the budget is not reset on resumption.
 
 ## Pipeline Run Summary
 
-After the pipeline completes, report:
+After the pipeline completes, derive the summary from the execution manifest and report:
 
 - **Artifacts produced**: List all files written to `loop-workspace/` with their paths
-- **Gate results**: For each gate, pass/fail and retry count
-- **Loop iterations**: For each loop that fired, iteration count and outcome (converged, degraded, hit cap)
+- **Gate results**: For each gate, pass/fail and retry count (from `gates[].attempts` in the manifest)
+- **Loop iterations**: For each loop that fired, iteration count and outcome (from `loops[]` in the manifest)
+- **Cascade budget**: Calls used per review cycle (from `cascade_budgets[]`)
+- **Human decisions**: Decisions made during the run (from `decisions[]`)
 - **Review verdict**: Final verdict and any remaining warnings
-- **Total inference calls**: Approximate count of subagent delegations
+- **Total run duration**: From manifest `started_at` to final `updated_at`
 
 ## Guidance
 

@@ -64,12 +64,22 @@ If preconditions fail, report the specific failure and do not proceed.
 
 Create `<workspace-path>/workflows/<workflow-name>/` at the start to store intermediate artifacts. Intermediate artifacts live alongside the final workflow artifacts — git provides the safety net for rollback.
 
-### State Tracking
+### Execution Manifest
 
-Maintain these counters across the pipeline run:
+Maintain an execution manifest at `<workspace-path>/execution-manifest-add-<workflow-name>.json`. The manifest persists execution state across sessions.
 
-- Per-gate: pass/fail counts, retry counts
-- Per-loop: iteration counts, degradation signals per iteration (violation/failure counts)
+**Initialization** (on first run): Create the manifest with:
+- `pipeline_name`: `"loop-add-workflow"`
+- `workflow_name`: the user-provided workflow name
+- `run_id`: generate a UUID
+- `started_at`: current timestamp
+- `stages`: entries for `extract-existing-design`, `analyze-reuse`, `define-new-stages`, `compose-workflow`, `validate-consistency`, `write-phase`, all set to `pending`
+- `gates`: empty array (populated as gates are attempted)
+- `loops`: entries for each loop (`extraction-correction`, `reuse-analysis-correction`, `stage-definition-correction`, `workflow-config-correction`, `validation-correction`), each with `iteration_count: 0` and the appropriate `cap`
+- `cascade_budgets`: empty array (no cascade budgets in this pipeline)
+- `decisions`: empty array
+
+**Checkpoint protocol**: Update the manifest and write to disk after every state transition (phase start/complete, gate attempt, loop iteration, human decision, error). Always update `updated_at` on every write.
 
 ---
 
@@ -264,9 +274,14 @@ After writing, verify each file was modified/created successfully. If any write 
 
 ---
 
-## Resumption Table
+## Resumption
 
-When invoked, check `<workspace-path>/workflows/<workflow-name>/` for existing artifacts:
+The execution manifest is the primary resumption mechanism. On invocation, check for an existing manifest at `<workspace-path>/execution-manifest-add-<workflow-name>.json`.
+
+- **If manifest found**: Read it. Present status summary (which phases complete, loop counts, human decisions). Ask: "Resume from [next incomplete phase], or start fresh?" If resuming, restore all state from the manifest — skip `complete` phases, restore loop iteration counts, don't re-ask recorded decisions. If starting fresh, rename the manifest to `execution-manifest-add-<workflow-name>.<timestamp>.json`.
+- **If no manifest but workflow artifacts exist**: Fall back to artifact-presence resumption. Warn about lost execution state.
+
+**Fallback** (no manifest): Use artifact presence in `<workspace-path>/workflows/<workflow-name>/`:
 
 | Artifact | If present, skip to |
 |---|---|
@@ -276,7 +291,7 @@ When invoked, check `<workspace-path>/workflows/<workflow-name>/` for existing a
 | `workflow-config.md` | Phase 5 |
 | `validation.md` AND `gates.md` | Pipeline complete |
 
-Use the latest present artifact to determine the resumption point. Present the current state and ask: "Resume from [next phase], or start fresh?"
+Warn: "No execution manifest found. Resuming from artifact presence — loop iteration counts and human decisions could not be restored."
 
 ## Error Handling
 
@@ -284,19 +299,20 @@ Use the latest present artifact to determine the resumption point. Present the c
 
 **Human escalation**: When a gate escalates to human review, present the artifact and the specific problem clearly. Wait for the user's decision: fix and retry, accept with warning, or abort.
 
-**Pipeline abort**: Preserve the workflow directory as-is. Re-invoking `/loop:add-workflow` will detect existing artifacts and offer resumption. If writes were partially completed, the user can `git checkout` to restore the workspace.
+**Pipeline abort**: Preserve the workflow directory and execution manifest as-is. The manifest records exactly where execution stopped. Re-invoking `/loop:add-workflow` will read the manifest and offer precise resumption. If writes were partially completed, the user can `git checkout` to restore the workspace.
 
 **Write failure**: If any file write in the Write Phase fails, report which writes succeeded and which failed. Do not attempt partial cleanup — git provides rollback.
 
 ## Pipeline Run Summary
 
-After the pipeline completes, report:
+After the pipeline completes, derive the summary from the execution manifest and report:
 
 - **Artifacts produced**: List all files written with their paths
-- **Gate results**: For each gate, pass/fail and retry count
-- **Loop iterations**: For each loop that fired, iteration count and outcome (converged, degraded, hit cap)
+- **Gate results**: For each gate, pass/fail and retry count (from `gates[].attempts` in the manifest)
+- **Loop iterations**: For each loop that fired, iteration count and outcome (from `loops[]` in the manifest)
+- **Human decisions**: Decisions made during the run (from `decisions[]`)
 - **Files modified**: List of shared artifacts appended to and new workflow files created
-- **Total inference calls**: Approximate count of subagent delegations
+- **Total run duration**: From manifest `started_at` to final `updated_at`
 
 ## Guidance
 

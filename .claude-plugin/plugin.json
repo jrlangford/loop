@@ -1,7 +1,7 @@
 {
   "name": "loop",
   "description": "Design complete, internally consistent LLM pipeline specifications with configurable human interaction and graph-aware cascade detection for edits.",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "author": {
     "name": "Jonathan Langford"
   },
