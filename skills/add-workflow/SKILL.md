@@ -1,5 +1,4 @@
 ---
-name: add-workflow
 description: Add a new workflow to an existing Loop pipeline design. Analyzes stage reuse, incrementally extends shared artifacts, defines workflow-specific gates and loops, and validates cross-workflow consistency. Use when extending a pipeline with a new workflow rather than creating a new pipeline from scratch.
 ---
 

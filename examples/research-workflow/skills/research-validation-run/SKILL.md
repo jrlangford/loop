@@ -1,5 +1,4 @@
 ---
-name: research-validation-run
 description: >-
   This skill should be used when the user wants to validate research claims in a markdown document.
   It orchestrates a multi-stage pipeline that extracts claims, classifies them, launches 3 parallel

@@ -304,7 +304,7 @@ Where `<server-name>` references an MCP server the user has configured. The orch
 
 For each workflow in `loop-workspace/workflows/`, use `/skill-creator` to generate an orchestrator skill. Provide the following content requirements — `/skill-creator` decides the structure and style, but the generated orchestrator must include all of these elements:
 
-1. **Skill name**: `run` (single workflow) or `run-<workflow>` (multiple) — the plugin namespace provides the `<prefix>:` prefix automatically
+1. **Skill directory name**: `run` (single workflow) or `run-<workflow>` (multiple) — the plugin namespace provides the `<prefix>:` prefix automatically. **Do not include a `name` field in the skill's YAML frontmatter** — only `description` (and optionally `argument-hint`, `interaction`). Including `name` in frontmatter breaks namespace display during invocation.
 2. **Purpose**: orchestrate the full pipeline — sequence stages, enforce gates, manage feedback loops
 3. **Subagent types section**: Document which agent types the orchestrator uses, with the plugin-namespaced names. Example:
    ```markdown
@@ -386,6 +386,7 @@ After generating all files, perform both `/skill-creator`'s validation checklist
 - [ ] `.claude-plugin/plugin.json` exists with valid `name`, `description`, and `keywords` (includes `"loop-pipeline"`)
 - [ ] Plugin `name` matches the skill prefix
 - [ ] All skills are under `skills/` directory
+- [ ] No `SKILL.md` file contains a `name` field in its YAML frontmatter (breaks namespace display)
 - [ ] `agents/<prefix>-stage-runner.md` and `agents/<prefix>-gate-checker.md` exist
 - [ ] If any stage has web sources, `agents/<prefix>-web-stage-runner.md` exists
 - [ ] If any gate requires web verification, `agents/<prefix>-web-gate-checker.md` exists

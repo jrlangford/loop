@@ -1,5 +1,4 @@
 ---
-name: autodoc-run
 description: Run the autodoc pipeline to extract structured behaviour documents from source code. Analyzes a codebase to identify decision boundaries and produces one behaviour document per boundary following a standardized template with contracts, scenarios, and traceability. Use when the user wants to document code behaviour, extract decision boundaries, generate behaviour specs, reverse-engineer behaviour documentation, or run `/autodoc-run`.
 ---
 
