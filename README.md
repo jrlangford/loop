@@ -1,8 +1,8 @@
 # Loop
 
-How do we collaborate effectively with AI?
+How do we work effectively with AI?
 
-Some work requires structured engagement, while other work benefits from free exploration. For the former, effective collaboration with LLMs requires explicit workflow design — one that identifies what can be delegated to the LLM and what requires human judgement.
+Some work requires structured engagement, while other work benefits from free exploration. For the former, effective results require explicit workflow design — one that identifies what can be delegated to the LLM and what requires human judgement.
 
 Loop is a design framework for structuring LLM work as pipelines: sequences of focused stages connected by explicit feedback loops, with human review at critical quality gates. It's delivered as a set of Claude Code skills that guide you through pipeline design interactively and can translate finished designs into implementable Claude skills.
 
