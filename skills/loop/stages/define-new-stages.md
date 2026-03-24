@@ -28,7 +28,7 @@ Specify new stages needed to fill capability gaps identified in the reuse analys
 2. Collect all existing stage names and artifact names from the Existing-Design-Inventory. These are the collision avoidance sets.
 3. For each capability gap, define one or more new stages:
    - **Name**: Verb-noun format. Check against the collision avoidance set — no duplicates allowed.
-   - **Category**: Assign from the enum (Extract, Enrich, Transform, Evaluate, Synthesise, Refine, Emit).
+   - **Category**: Assign from the enum (Extract, Enrich, Transform, Evaluate, Synthesise, Emit).
    - **Intent**: Single verb phrase. Apply the one-verb heuristic — if you need "and", "then", or a semicolon, split into two stages.
    - **Input**: What this stage consumes (reference to existing or new artifacts).
    - **Output**: What this stage produces.

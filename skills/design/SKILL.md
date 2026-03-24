@@ -182,7 +182,7 @@ After the subagent completes, read `loop-workspace/stages.md` to verify it exist
 
 Schema checks (run inline):
 - [ ] All required fields present on every stage
-- [ ] Every `category` is from the enum: Extract, Enrich, Transform, Evaluate, Synthesise, Refine, Emit
+- [ ] Every `category` is from the enum: Extract, Enrich, Transform, Evaluate, Synthesise, Emit
 - [ ] Every stage name is unique
 - [ ] Stage count matches the overview
 

@@ -12,7 +12,7 @@ Fully specified new stages and their artifact contracts, ready for append to sha
 |-------|------|-------------|
 | `new_stages[]` | array | New stage definitions |
 | `new_stages[].name` | string | Verb-noun format, unique across existing and new stages |
-| `new_stages[].category` | enum | Extract, Enrich, Transform, Evaluate, Synthesise, Refine, Emit |
+| `new_stages[].category` | enum | Extract, Enrich, Transform, Evaluate, Synthesise, Emit |
 | `new_stages[].intent` | string | Single verb phrase |
 | `new_stages[].input` | string | What this stage consumes |
 | `new_stages[].output` | string | What this stage produces |

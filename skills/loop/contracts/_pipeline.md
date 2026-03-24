@@ -3,7 +3,7 @@
 ## Enums
 
 ### Stage Categories
-`Extract` | `Enrich` | `Transform` | `Evaluate` | `Synthesise` | `Refine` | `Emit`
+`Extract` | `Enrich` | `Transform` | `Evaluate` | `Synthesise` | `Emit`
 
 ### Interaction Levels
 `minimal` | `per-stage` | `none`

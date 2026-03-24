@@ -106,7 +106,7 @@ Assemble the markdown document with these sections. Include only sections for wh
 ## Stages
 
 ### [Stage Name]
-- **Category**: [Extract | Enrich | Transform | Evaluate | Synthesise | Refine | Emit]
+- **Category**: [Extract | Enrich | Transform | Evaluate | Synthesise | Emit]
 - **Intent**: [Single verb phrase from stages.md]
 - **Input**: [What it consumes]
 - **Output**: [What it produces]

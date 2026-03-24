@@ -14,7 +14,7 @@ Ordered list of pipeline stages with categories, intents, inputs, outputs, and d
 | `overview` | string | One-line summary + stage count |
 | `stages[]` | array | Ordered list of stages |
 | `stages[].name` | string | Verb-noun format |
-| `stages[].category` | enum | Extract, Enrich, Transform, Evaluate, Synthesise, Refine, Emit |
+| `stages[].category` | enum | Extract, Enrich, Transform, Evaluate, Synthesise, Emit |
 | `stages[].intent` | string | Single verb phrase |
 | `stages[].input` | string | What this stage consumes |
 | `stages[].output` | string | What this stage produces |

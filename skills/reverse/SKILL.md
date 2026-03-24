@@ -44,7 +44,7 @@ The description must cover:
 - The gap between input and output — what work bridges them
 
 **Stages discovered** (mapped to Loop vocabulary):
-- Each stage's intent, mapped to a Loop category (Extract, Enrich, Transform, Evaluate, Synthesise, Refine, Emit)
+- Each stage's intent, mapped to a Loop category (Extract, Enrich, Transform, Evaluate, Synthesise, Emit)
 - What each stage actually does — the transformation logic, not just a label
 - Dependencies between stages — what feeds what
 - Stages that violate the one-verb heuristic (flag, but still capture what they do)

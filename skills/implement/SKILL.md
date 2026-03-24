@@ -158,9 +158,8 @@ For each stage in `stages.md`, create a file in `skills/<prefix>/stages/`:
 | **Extract** | Index, don't analyse. Resist adding interpretation — that's downstream. |
 | **Enrich** | Add information, don't transform structure. New fields supplement, not replace. |
 | **Transform** | Convert representations. Input and output are structurally different. |
-| **Evaluate** | Assess against criteria. Separate observation from judgment. Evidence required. |
+| **Evaluate** | Assess and enrich with judgments. Separate observation from judgment. Evidence required. Use when downstream stages consume the assessments — if the sole purpose is pass/fail, use a gate instead. |
 | **Synthesise** | Combine inputs into a new whole. Reference sources, don't paraphrase. |
-| **Refine** | Improve based on specific feedback. Change only what the feedback addresses. |
 | **Emit** | Push to external target. Validate completeness before writing. Ensure idempotency markers are present. |
 
 #### Context Spec → Stage Guidance

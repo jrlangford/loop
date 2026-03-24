@@ -11,10 +11,11 @@ Isolated transformation units. Each stage transforms an input artifact into an o
 | **Extract** | Pull structure from unstructured input | Raw text → structured entities |
 | **Enrich** | Add information to an existing artifact | Entities → entities with context |
 | **Transform** | Convert between representations | Domain model → implementation plan |
-| **Evaluate** | Assess quality against criteria | Draft → scored draft with issues |
+| **Evaluate** | Assess and enrich with judgments | Entities → entities with severity scores |
 | **Synthesise** | Combine multiple artifacts into one | Multiple analyses → unified report |
-| **Refine** | Improve an artifact based on feedback | Draft + critique → improved draft |
 | **Emit** | Push an artifact to an external target | Report → published report (via API, git, Slack) |
+
+> **Evaluate vs. Gate.** An Evaluate *stage* produces a richer artifact — it adds assessments, scores, or classifications downstream stages consume. A *gate* is a validation checkpoint that produces a pass/fail decision and routes failures back. When evaluation exists solely to decide whether an artifact is good enough, it belongs in a gate, not a stage.
 
 ## Artifacts
 

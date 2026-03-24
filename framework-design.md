@@ -109,10 +109,11 @@ Note: a stage does not declare which loops or gates it participates in — that 
 | **Extract** | Pull structure from unstructured input | Raw text → structured entities |
 | **Enrich** | Add information to an existing artifact | Entities → entities with context |
 | **Transform** | Convert between representations | Domain model → implementation plan |
-| **Evaluate** | Assess quality against criteria | Draft → scored draft with issues |
+| **Evaluate** | Assess and enrich with judgments | Entities → entities with severity scores |
 | **Synthesise** | Combine multiple artifacts into one | Multiple analyses → unified report |
-| **Refine** | Improve an artifact based on feedback | Draft + critique → improved draft |
 | **Emit** | Push an artifact to an external target | Report → published report (via API, git, etc.) |
+
+> **Evaluate vs. Gate.** An Evaluate *stage* produces a richer artifact — it adds assessments, scores, or classifications to its input and passes the enriched result downstream. A *gate* is a validation checkpoint that produces a pass/fail decision and routes failures back. When evaluation exists solely to decide whether an artifact is good enough, it belongs in a gate, not a stage. When evaluation adds information that downstream stages consume (regardless of pass/fail), it belongs in a stage.
 
 ### 3.3 Artifacts
 
@@ -209,12 +210,11 @@ A loop is an **explicit feedback connection** between stages, defined at the wor
 **Reinforcing loops (R)** — designed to amplify and deepen:
 
 ```mermaid
-graph LR
-    A["Stage A"] --> AR["Artifact"] --> B["Stage B"] --> EA["Enhanced Artifact"] --> A
-    style A fill:#bbf,stroke:#333
-    style B fill:#bbf,stroke:#333
-    style AR fill:#bfb,stroke:#333
-    style EA fill:#bfb,stroke:#333
+flowchart LR
+    classDef stage fill:#bbf,stroke:#333
+    classDef artifact fill:#bfb,stroke:#333
+
+    A["Stage A"]:::stage -->|artifact| B["Stage B"]:::stage -->|enhanced artifact| A
 ```
 
 Use when: you want iterative enrichment, progressive elaboration, or cumulative refinement. Each pass through the loop should demonstrably add value.
@@ -226,17 +226,16 @@ Use when: you want iterative enrichment, progressive elaboration, or cumulative 
 **Balancing loops (B)** — designed to correct and constrain:
 
 ```mermaid
-graph LR
-    A["Stage A"] --> AR["Artifact"] --> G["Gate / Evaluate"] --> FB["Feedback Artifact"] --> A
-    style A fill:#bbf,stroke:#333
-    style G fill:#ffb,stroke:#333
-    style AR fill:#bfb,stroke:#333
-    style FB fill:#fbf,stroke:#333
+flowchart LR
+    classDef stage fill:#bbf,stroke:#333
+    classDef gate fill:#fcf3cf,stroke:#f1c40f
+
+    A["Stage A"]:::stage -->|artifact| G{"Gate"}:::gate -->|feedback| A
 ```
 
 Use when: you want quality control, error correction, or constraint enforcement. Each pass through the loop should reduce the distance between the artifact and the desired state.
 
-*Example:* Draft → Evaluate (against criteria) → Feedback → Refine → re-Evaluate
+*Example:* Synthesise → draft → Quality Gate → fail feedback → Synthesise (refine) → improved draft → Quality Gate
 
 **Every loop MUST have:**
 
@@ -401,6 +400,8 @@ A stage's external dependencies determine its testing, retry, and failure-handli
 | Yes | Yes | **Enriched emitting transformation** | Most complex — needs both source and sink mocks, both read and write failure modes |
 
 The classification is not a quality judgment — pipelines often legitimately need all four types. But the designer should be aware of which stages have side effects, because those stages behave differently under retry, gate failure, and loop re-entry.
+
+> **Sources + Sinks = bidirectional link.** When a stage both reads from and writes to the same external system (e.g., reads a Notion database, then writes updated records back), the source and sink together form a bidirectional link with that system. This introduces coordination concerns — read-then-write ordering, stale reads, write conflicts — that neither a source alone nor a sink alone creates. When you spot this pattern, verify that the stage's retry and idempotency strategy accounts for the round-trip: a retried stage may re-read data that its previous attempt already modified.
 
 ### 3.9 Non-Determinism
 
@@ -612,46 +613,33 @@ A concrete example to illustrate the framework:
 **Task:** Given a research question, produce a structured analytical report.
 
 ```mermaid
-graph TD
-    RQ["Research Question"] --> DECOMPOSE["DECOMPOSE<br/>Break question into sub-questions"]
-    DECOMPOSE --> SG{"Schema Gate<br/>Valid sub-questions?"}
-    SG -->|pass| RESEARCH["RESEARCH<br/>(per sub-question)"]
-    SG -->|"fail: validation errors"| DECOMPOSE
-    RESEARCH --> FA["Findings Artifact"]
-    FA --> EVAL["EVALUATE COVERAGE"]
-    EVAL -->|"Gap report<br/>(max 2 iterations)"| RESEARCH
-    EVAL -->|"No gaps"| MG{"Metric Gate<br/>coverage > 0.8"}
-    MG -->|pass| SYNTH["SYNTHESISE<br/>Combine findings into draft"]
-    MG -->|"fail: coverage score<br/>+ gap analysis"| RESEARCH
-    SYNTH --> DA["Draft Artifact"]
-    DA --> CRITIQUE["CRITIQUE<br/>Evaluate against criteria"]
-    CRITIQUE -->|"Issues found"| FBA["Feedback Artifact"]
-    FBA --> REFINE["REFINE<br/>Improve draft"]
-    REFINE -->|"Revised draft<br/>(max 3 iterations)"| CRITIQUE
-    CRITIQUE -->|"No issues remain"| FORMAT["FORMAT<br/>Structure final output"]
-    FORMAT --> REPORT["Structured Report"]
+flowchart TD
+    classDef stage fill:#bbf,stroke:#333
+    classDef gate fill:#fcf3cf,stroke:#f1c40f
 
-    style DECOMPOSE fill:#bbf,stroke:#333
-    style RESEARCH fill:#bbf,stroke:#333
-    style EVAL fill:#ffb,stroke:#333
-    style SYNTH fill:#bbf,stroke:#333
-    style CRITIQUE fill:#ffb,stroke:#333
-    style REFINE fill:#bfb,stroke:#333
-    style FORMAT fill:#bbf,stroke:#333
-    style SG fill:#fff,stroke:#f90
-    style MG fill:#fff,stroke:#f90
+    RQ["Research Question"] --> DECOMPOSE["Decompose"]:::stage
+    DECOMPOSE -->|sub-questions| SG{"Schema Gate"}:::gate
+    SG -->|pass| RESEARCH["Research"]:::stage
+    SG -.->|"fail: validation errors"| DECOMPOSE
+    RESEARCH -->|findings| CG{"Coverage Gate"}:::gate
+    CG -.->|"fail: gap report, cap=2"| RESEARCH
+    CG -->|pass| SYNTH["Synthesise"]:::stage
+    SYNTH -->|draft| QG{"Quality Gate"}:::gate
+    QG -.->|"fail: issues, cap=3"| SYNTH
+    QG -->|pass| FORMAT["Format"]:::stage
+    FORMAT --> REPORT["Structured Report"]
 ```
 
-**Stages:** 6 (Decompose, Research, Evaluate Coverage, Synthesise, Critique + Refine, Format)
-**Artifacts:** 5 (Sub-questions, Findings, Draft, Feedback, Report)
-**Gates:** 2 (Schema after decompose, Metric for coverage)
-**Loops:** 2 (both balancing — coverage gap closure, critique-refine)
+**Stages:** 4 (Decompose, Research, Synthesise, Format)
+**Artifacts:** 4 (Sub-questions, Findings, Draft, Report)
+**Gates:** 3 (Schema after decompose, Coverage after research, Quality after synthesise)
+**Loops:** 2 (both balancing — coverage gap closure, quality refinement)
 
 Note how every failure path carries information to a stage that can act on it:
 
 - **Schema Gate fail** → validation errors fed back to Decompose. This is the one case where a stage re-runs on its own output — acceptable here because the gate provides *specific structural errors* (missing fields, malformed questions) that deterministically change the prompt for the retry.
-- **Metric Gate fail** → coverage score and gap analysis routed to Research, not back to Evaluate. The gate's output identifies *what's missing*, and Research is the stage that can fill those gaps. Evaluate Coverage has nothing to re-evaluate until new findings exist.
-- **Critique → Refine loop** — Critique produces a structured feedback artifact identifying specific issues. Refine acts on it and returns a revised draft. Critique re-evaluates. The loop terminates when Critique finds no remaining issues, or after 3 iterations. Note that Critique does not need a separate gate — its evaluation *is* the semantic gate. A separate checkpoint re-asking "did the critique pass?" would be a Phantom Feedback Loop (Section 6.4).
+- **Coverage Gate fail** → gap analysis routed to Research, not back through a separate evaluation stage. The gate identifies *what's missing*, and Research is the stage that can fill those gaps.
+- **Quality Gate fail** → specific issues routed back to Synthesise. The gate evaluates the draft against criteria and produces structured feedback; Synthesise refines the draft using that feedback on the next iteration. There is no separate Refine stage — the producing stage itself acts on the gate's feedback. This is the Critique-Refine pattern (Section 5.1) expressed as a gate loop.
 
 Each stage's context contains only its input artifact and stage-specific scaffolding. The Format stage, for instance, never sees the research findings directly — only the refined draft. This is intentional: it prevents the format stage from second-guessing synthesis decisions, keeping its channel bandwidth focused on formatting.
 
@@ -664,11 +652,12 @@ Each stage's context contains only its input artifact and stage-specific scaffol
 This is the [evaluator-optimizer pattern](https://www.anthropic.com/research/building-effective-agents): "one LLM call generates a response while another provides evaluation and feedback in a loop." It is recommended when "LLM responses can be demonstrably improved when feedback is provided" and "the LLM can provide meaningful feedback itself." Loop adds a systems thinking observation: this is a **balancing loop** — each iteration should reduce the distance between the artifact and the desired state. Recognising it as such reveals specific failure modes (echo chambers, degradation) and design requirements (termination conditions, degradation detectors) that the pattern description alone doesn't surface.
 
 ```mermaid
-graph LR
-    AR["Artifact"] --> EV["Evaluate"] --> FB["Feedback"] --> RF["Refine"] --> IA["Improved Artifact"]
-    IA --> EV
-    style EV fill:#ffb,stroke:#333
-    style RF fill:#bfb,stroke:#333
+flowchart LR
+    classDef stage fill:#bbf,stroke:#333
+    classDef gate fill:#fcf3cf,stroke:#f1c40f
+
+    S["Stage"]:::stage -->|artifact| G{"Gate"}:::gate -->|pass| OUT["Proceed"]
+    G -.->|"fail: feedback"| S
 ```
 
 **Design considerations:**
@@ -682,11 +671,10 @@ graph LR
 A reinforcing loop designed to deepen an artifact iteratively.
 
 ```mermaid
-graph LR
-    AR["Artifact"] --> EN["Enrich"] --> EA["Enriched Artifact"] --> EN2["Enrich<br/>(with new context)"] --> EA2["..."]
-    style EN fill:#bbf,stroke:#333
-    style EN2 fill:#bbf,stroke:#333
-    style EA fill:#bfb,stroke:#333
+flowchart LR
+    classDef stage fill:#bbf,stroke:#333
+
+    AR["Artifact"] --> EN["Enrich"]:::stage -->|enriched artifact| EN2["Enrich again"]:::stage --> EA2["..."]
 ```
 
 **Design considerations:**
@@ -700,19 +688,14 @@ graph LR
 This combines the [parallelisation pattern](https://www.anthropic.com/research/building-effective-agents) (multiple LLM calls processing the same input independently) with a balancing feedback dynamic: disagreement between evaluators triggers correction. Multiple independent evaluations are compared; disagreement triggers re-evaluation or synthesis.
 
 ```mermaid
-graph TD
-    AR["Artifact"] --> EVA["Evaluate (A)"]
-    AR --> EVB["Evaluate (B)"]
-    EVA --> CMP["Compare"]
-    EVB --> CMP
-    CMP -->|Consensus| OUT["Proceed"]
-    CMP -->|Dispute| SYN["Synthesise"]
-    SYN --> REEV["Re-evaluate"]
+flowchart LR
+    classDef stage fill:#bbf,stroke:#333
+    classDef gate fill:#fcf3cf,stroke:#f1c40f
 
-    style EVA fill:#bbf,stroke:#333
-    style EVB fill:#bbf,stroke:#333
-    style CMP fill:#ffb,stroke:#333
-    style SYN fill:#bfb,stroke:#333
+    AR["Artifact"] --> EVA["Evaluate A"]:::stage --> CMP{"Consensus Gate"}:::gate
+    AR --> EVB["Evaluate B"]:::stage --> CMP
+    CMP -->|consensus| OUT["Proceed"]
+    CMP -.->|dispute| AR
 ```
 
 **Design considerations:**
@@ -725,17 +708,14 @@ graph TD
 This corresponds to the [orchestrator-workers pattern](https://www.anthropic.com/research/building-effective-agents), where a central LLM dynamically breaks tasks into sub-tasks and delegates them. Loop frames it through information rate: this is how you manage tasks whose information rate exceeds single-channel capacity. Not a feedback loop per se, but a structural pattern that keeps individual stages within their effective capacity:
 
 ```mermaid
-graph LR
-    CA["Complex Artifact"] --> DEC["Decompose"] --> SA["Sub-artifacts"]
-    SA --> P1["Process"] --> AGG["Aggregate"]
-    SA --> P2["Process"] --> AGG
-    SA --> P3["Process"] --> AGG
+flowchart LR
+    classDef stage fill:#bbf,stroke:#333
+    classDef worker fill:#bfb,stroke:#333
+    classDef merge fill:#f9f,stroke:#333
 
-    style DEC fill:#bbf,stroke:#333
-    style P1 fill:#bfb,stroke:#333
-    style P2 fill:#bfb,stroke:#333
-    style P3 fill:#bfb,stroke:#333
-    style AGG fill:#f9f,stroke:#333
+    CA["Complex Artifact"] --> DEC["Decompose"]:::stage -->|sub-artifacts| P1["Process"]:::worker --> AGG["Aggregate"]:::merge
+    DEC --> P2["Process"]:::worker --> AGG
+    DEC --> P3["Process"]:::worker --> AGG
 ```
 
 This is how you handle tasks whose information rate exceeds single-stage channel capacity. The decompose step breaks the problem into sub-problems, each processed independently with focused context, then aggregated.
@@ -752,24 +732,24 @@ A stage should not know what comes after it. When stages hardcode their successo
 The fix is to separate **stages** (what to do) from **workflows** (in what order). Stages are composable units that produce an artifact and stop. Workflows are thin orchestration layers that sequence stages, check preconditions, and manage flow control. The same stages can be composed into multiple workflows:
 
 ```mermaid
-graph TD
+flowchart TD
+    classDef workflow fill:#f9f,stroke:#333
+    classDef stage fill:#bbf,stroke:#333
+
     subgraph "Stages (composable units)"
-        D["Define"] --> |artifact| DC["Decompose"] --> |artifact| A["Artifacts"]
-        R["Reverse"] --> |artifact| RV["Review"]
-        AU["Audit"]
+        D["Define"]:::stage -->|artifact| DC["Decompose"]:::stage -->|artifact| A["Artifacts"]:::stage
+        R["Reverse"]:::stage -->|artifact| RV["Review"]:::stage
+        AU["Audit"]:::stage
     end
 
     subgraph "Workflows (orchestration)"
-        W1["Design Workflow"] -.-> D
+        W1["Design Workflow"]:::workflow -.-> D
         W1 -.-> DC
         W1 -.-> A
-        W2["Analysis Workflow"] -.-> R
+        W2["Analysis Workflow"]:::workflow -.-> R
         W2 -.-> RV
         W2 -.-> AU
     end
-
-    style W1 fill:#f9f,stroke:#333
-    style W2 fill:#f9f,stroke:#333
 ```
 
 **Design considerations:**

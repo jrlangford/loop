@@ -12,7 +12,7 @@ Structured index of all stages, artifacts, context specs, and workflow configura
 |-------|------|-------------|
 | `stages[]` | array | Existing stage entries |
 | `stages[].name` | string | Stage name (verb-noun) |
-| `stages[].category` | enum | Extract, Enrich, Transform, Evaluate, Synthesise, Refine, Emit |
+| `stages[].category` | enum | Extract, Enrich, Transform, Evaluate, Synthesise, Emit |
 | `stages[].intent` | string | Single verb phrase |
 | `stages[].input_contract_summary` | string | One-line summary of the stage's input shape |
 | `stages[].output_contract_summary` | string | One-line summary of the stage's output shape |
