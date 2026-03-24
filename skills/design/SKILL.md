@@ -287,7 +287,7 @@ After the subagent completes, read `loop-workspace/context-specs.md` to verify i
 Read the stage file at `loop/stages/place-gates.md`, the input contracts at `loop/contracts/stage-decomposition.md` and `loop/contracts/artifact-specifications.md`, and the output contract at `loop/contracts/gate-specifications.md`. Read the input artifacts from `loop-workspace/stages.md`, `loop-workspace/artifacts.md`, and `loop-workspace/transformation.md`. The pipeline interaction level is: [pipeline-interaction-level]. Work through gate placement collaboratively:
 - Propose gate positions and types for each stage boundary
 - Discuss which boundaries need gates vs. which can be ungated (with rationale)
-- Ask about domain-specific validation criteria
+- Surface domain guidelines from `transformation.md` at each boundary — reframe them as validation criteria and encode them in gate specs
 - Write the agreed result to `loop-workspace/workflows/<workflow-name>/gates.md`
 
 **If delegated** (phase 5 is not in `inline_phases`):

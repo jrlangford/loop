@@ -17,6 +17,7 @@ Validation checkpoints between stages — positions, types, criteria, failure ro
 | `gates[].artifact_checked` | string | Artifact name (must match artifacts.md) |
 | `gates[].type` | enum | Schema, Metric, Identity, Semantic, Consensus, Human |
 | `gates[].criteria` | string | What must be true to pass |
+| `gates[].domain_guidelines_applied` | string[] (optional) | Which domain guidelines from `transformation.md` are encoded in this gate's criteria. Omit when no domain guidelines apply to this boundary. |
 | `gates[].on_failure.routes_to` | string | Stage name |
 | `gates[].on_failure.carries` | string | What feedback the failing stage receives |
 | `gates[].on_failure.max_retries` | integer | Maximum retry count |

@@ -68,6 +68,11 @@ Apply each quality check to the **design artifacts**. Focus on:
 - WARNING: Pipeline has Emit stages but no human gate candidate at or before the first Emit boundary — irreversible writes have no human review opportunity.
 - INFO: No `human_gate_candidates[]` section exists — either Place Gates did not assess candidates, or no risk dimensions triggered (note which).
 
+**Domain guideline coverage:**
+- If `transformation.md` includes `domain_guidelines`: check that every guideline is referenced by at least one gate's `domain_guidelines_applied` field. Unmapped guidelines are validation gaps — WARNING.
+- For semantic gates at boundaries where domain guidelines apply: check that criteria encode the guideline explicitly, not generically. Generic phrasing ("check quality") at domain-specific boundaries — WARNING.
+- If `domain_guidelines` is absent and `gap_analysis` doesn't explain why — WARNING: designer may not have elicited domain rules.
+
 **Sink safety**, **precondition coverage**, **stage/workflow separation**, **loop safety**, **stochastic validation**, **handoff drift resilience** — apply the check criteria from `loop/quality-checks-design.md` to the design specifications.
 
 ### Step 4: Estimate cost per workflow

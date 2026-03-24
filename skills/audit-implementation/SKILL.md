@@ -81,6 +81,7 @@ If `loop-workspace/` contains design artifacts, compare each against what the im
 
 - **Stage-level**: Do the implemented stages match `stages.md`? Do the actual data contracts match `artifacts.md`? Do context loads match `context-specs.md`?
 - **Workflow-level**: Do the implemented gates match `workflows/<name>/gates.md`? Do the actual feedback loops match `workflows/<name>/loops.md`?
+- **Domain guidelines**: If `transformation.md` includes `domain_guidelines`, check whether the implementation's `_pipeline.md` reproduces them. Check whether semantic gates that reference domain guidelines actually pass `_pipeline.md` to the gate-checker subagent. Missing domain guidelines in the implementation means gate evaluators fall back on general LLM knowledge instead of the user's domain rules.
 
 For each discrepancy, classify it:
 

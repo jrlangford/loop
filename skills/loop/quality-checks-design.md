@@ -98,6 +98,15 @@ Are human review points placed where risk warrants them?
 - Do all `overridden` candidates include the designer's rationale for declining? (Overrides without reasoning are indistinguishable from oversights.)
 - Does any promoted Human gate act as a **cut vertex** — a mandatory stop where all paths from pipeline input to output pass through that single gate, with no alternative automated path? If so, flag as a Toll Booth Pipeline (anti-pattern #9): the workflow is likely two independent workflows joined by a human handoff and should be split.
 
+## Domain Guideline Coverage
+
+Are domain-specific quality rules encoded in gates?
+
+- If `transformation.md` includes `domain_guidelines`, does every guideline map to at least one gate's criteria? Unmapped guidelines are validation gaps — the pipeline accepts them as requirements but never checks them.
+- For semantic or consensus gates at boundaries where domain guidelines apply: does the gate's `criteria` field encode the guideline explicitly, or does it rely on generic phrasing ("check quality", "verify correctness")? Generic criteria at domain-specific boundaries are a WARNING — the evaluator will fall back on general LLM knowledge instead of the user's rules.
+- If `domain_guidelines` is absent from `transformation.md`: does `gap_analysis` explain why? If not, WARNING — the designer may not have asked.
+- For gates with `domain_guidelines_applied`: verify each referenced guideline actually exists in `transformation.md`. Stale references after edits are an integrity issue.
+
 ## Handoff Drift Resilience
 
 Do artifacts resist interpretation drift across stages?

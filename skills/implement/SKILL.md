@@ -16,7 +16,7 @@ Read all files in `loop-workspace/`:
 - `artifacts.md` — artifact specifications
 
 **Recommended** (stage-level):
-- `transformation.md` — overall transformation definition (used for naming and descriptions)
+- `transformation.md` — overall transformation definition (used for naming, descriptions, and domain guidelines)
 - `context-specs.md` — per-stage context budgets (used for skill guidance sections)
 
 **Required for orchestrator generation** (workflow-level):
@@ -88,8 +88,11 @@ For each stage, collect:
 - **From `artifacts.md`**: the artifact spec for this stage's output (structure, validation rules, identity fields, omitted fields, reasoning trace policy)
 - **From `context-specs.md`** (if present): what goes in context, what's excluded, load assessment, history policy
 
+From `transformation.md`, collect:
+- **`domain_guidelines`** (if present): domain-specific quality standards, acceptance criteria, and validation rules. These flow into gate criteria and stage guidance — they define what "correct" means beyond structural validity.
+
 For each workflow, collect:
-- **From `gates.md`**: gate positions, types, criteria, failure routes, max retries
+- **From `gates.md`**: gate positions, types, criteria, failure routes, max retries, `domain_guidelines_applied` (which domain guidelines each gate enforces)
 - **From `loops.md`**: loop types, termination conditions, degradation detectors, iteration caps
 
 ### Step 4: Generate plugin manifest
@@ -127,6 +130,7 @@ Also create `skills/<prefix>/contracts/_pipeline.md` containing:
 - Pipeline-wide constants (enums, taxonomies, shared vocabularies)
 - Workspace path conventions (`<prefix>-workspace/` layout)
 - Artifact file naming rules
+- **Domain guidelines** (if `transformation.md` includes `domain_guidelines`): reproduce them verbatim in a dedicated section. These are the domain-specific quality rules that gate criteria enforce. Including them in `_pipeline.md` makes them available to gate-checker subagents without requiring access to the original transformation definition.
 
 Also create `skills/<prefix>/contracts/execution-manifest.md` containing the full JSON schema for the execution manifest. Derive the schema from `loop-workspace/artifacts.md` (Runtime Artifact: Execution Manifest), tailored to this pipeline's specific stages, gates, and loops. The contract should include an example manifest showing the pipeline's stages pre-populated with `pending` status.
 
@@ -219,6 +223,10 @@ You are a semantic gate evaluator for the <prefix> pipeline. You receive an
 artifact to evaluate and validation criteria. Evaluate the artifact against the
 criteria and report pass or fail with specific evidence. You are deliberately
 isolated from the context that produced this artifact. Do not modify any files.
+
+When validation criteria reference domain guidelines, read the domain guidelines
+section from <prefix>/contracts/_pipeline.md to evaluate against the user's
+domain-specific quality rules — do not rely on general knowledge for these checks.
 
 If a criterion is ambiguous or you cannot evaluate it with confidence, do not
 guess. Instead, include a structured escalation block so the orchestrator can
@@ -327,7 +335,7 @@ For each workflow in `loop-workspace/workflows/`, use `/skill-creator` to genera
      - Stages with MCP dependencies → `<prefix>-<source-name>-stage-runner`
    - The subagent's prompt must include: (a) the stage file contents, (b) the relevant contract files for input and output schemas, (c) the input artifact path in `<prefix>-workspace/`, (d) the output artifact path to write. The orchestrator does **not** execute stage transformations in its own context.
    - After the subagent completes, the orchestrator reads the output artifact from `<prefix>-workspace/` to verify it exists and proceed.
-   - Run gate checks after each stage. Schema and metric gates run inline. **Semantic gates must run in the `<prefix>-gate-checker` subagent** (or `<prefix>-web-gate-checker` if web verification is needed) with clean context containing only the artifact, validation criteria, and (where relevant) the original source material.
+   - Run gate checks after each stage. Schema and metric gates run inline. **Semantic gates must run in the `<prefix>-gate-checker` subagent** (or `<prefix>-web-gate-checker` if web verification is needed) with clean context containing only the artifact, validation criteria, and (where relevant) the original source material. When a gate has `domain_guidelines_applied`, include a reference to `<prefix>/contracts/_pipeline.md` (domain guidelines section) in the gate-checker prompt so the evaluator can verify against the user's domain rules.
    - Handle loop feedback: on gate failure, re-run the stage subagent with the gate feedback appended to its prompt.
 7. **Error handling**: stage failure, human escalation, pipeline abort. For Emit stages, include sink failure handling. Specifically:
    - When a subagent response contains an `## ESCALATION` block, the orchestrator must use `AskUserQuestion` to present the escalation reason and suggested action to the user. Offer options like "Provide clarification", "Skip this stage", or "Abort pipeline". Feed the user's response back into the subagent retry.
@@ -362,7 +370,7 @@ For each workflow in `loop-workspace/workflows/`, use `/skill-creator` to genera
 | **Schema** | Check structural presence of required fields/sections |
 | **Metric** | Check quantitative thresholds (counts, percentages) |
 | **Identity** | Verify specific fields haven't changed from upstream |
-| **Semantic** | Run a separate LLM evaluation in clean context |
+| **Semantic** | Run a separate LLM evaluation in clean context. If the gate has `domain_guidelines_applied`, include `<prefix>/contracts/_pipeline.md` in the evaluator's context so it can check domain-specific criteria. |
 | **Consensus** | Run multiple independent evaluations, compare results |
 | **Human** | Use `AskUserQuestion` to present the artifact summary, gate criteria, and the specific concern to the user. Offer options appropriate to the context (e.g., "Approve", "Reject — needs changes", "Skip with warning"). Include the artifact workspace path so the user can inspect it. On rejection, feed the user's notes back into the feedback loop as gate failure feedback. |
 
@@ -409,6 +417,7 @@ After generating all files, perform both `/skill-creator`'s validation checklist
 - [ ] Every orchestrator references stage files that exist in `skills/<prefix>/stages/`
 - [ ] Workspace file paths are consistent across all stage files and orchestrators
 - [ ] Orchestrator gate criteria match contract validation rules
+- [ ] If `transformation.md` includes `domain_guidelines`: `_pipeline.md` reproduces them, and every gate with `domain_guidelines_applied` includes a reference to `_pipeline.md` in its gate-checker prompt
 
 **Sink safety:**
 - [ ] Every Emit stage file includes idempotency strategy and sink format requirements
@@ -422,6 +431,7 @@ After generating all files, perform both `/skill-creator`'s validation checklist
 **Context isolation**:
 - [ ] Every stage is delegated to a subagent with explicit `subagent_type`
 - [ ] Semantic gates run in `<prefix>-gate-checker` (or `<prefix>-web-gate-checker`) subagents, not inline
+- [ ] Semantic gates with `domain_guidelines_applied` pass `_pipeline.md` to the gate-checker for domain rule verification
 - [ ] The orchestrator's own context contains only orchestration state, not stage working memory
 - [ ] Each subagent prompt includes only the stage file, relevant contracts, and input artifact path
 - [ ] Orchestrator's Subagent Types section lists all agent types used
